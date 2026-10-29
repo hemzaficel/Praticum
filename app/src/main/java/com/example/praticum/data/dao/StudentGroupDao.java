@@ -54,4 +54,19 @@ public interface StudentGroupDao {
     // Suppression refusée si le groupe contient encore des étudiants.
     @Query("DELETE FROM student_group WHERE id = :groupId AND NOT EXISTS (SELECT 1 FROM student WHERE group_id = :groupId)")
     int deleteIfEmpty(long groupId);
+
+
+    @Query(
+            "SELECT g.* " +
+                    "FROM student_group AS g " +
+                    "INNER JOIN Course AS m ON m.level_id = g.level_id " +
+                    "WHERE m.id = :moduleId " +
+                    "AND g.academic_year_id = :academicYearId " +
+                    "AND g.level_id = m.level_id " +
+                    "ORDER BY g.code"
+    )
+    List<StudentGroup> getGroupsForModuleAndYear(
+            int moduleId,
+            int academicYearId
+    );
 }

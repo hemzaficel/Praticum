@@ -240,7 +240,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="Sélectionner un groupe"
+                    android:hint="Sélectionner un groupe de cette session"
                     app:boxBackgroundColor="@color/white"
                     app:boxCornerRadiusBottomEnd="12dp"
                     app:boxCornerRadiusBottomStart="12dp"

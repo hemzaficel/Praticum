@@ -12,7 +12,7 @@ import com.example.praticum.data.dao.ModuleDao;
 import com.example.praticum.data.dao.SessionCriterionDao;
 import com.example.praticum.data.database.AppDatabase;
 import com.example.praticum.data.database.DatabaseProvider;
-import com.example.praticum.data.entity.Module;
+import com.example.praticum.data.entity.Course;
 import com.example.praticum.data.entity.Session;
 import com.example.praticum.data.entity.SessionCriterion;
 import com.example.praticum.data.repository.SessionRepository;
@@ -40,7 +40,7 @@ public class SessionViewModel extends AndroidViewModel {
     private final MutableLiveData<List<Session>> activeSessions =
             new MutableLiveData<>(new ArrayList<>());
 
-    private final MutableLiveData<List<Module>> modules =
+    private final MutableLiveData<List<Course>> modules =
             new MutableLiveData<>(new ArrayList<>());
 
     private final MediatorLiveData<List<Session>> filteredSessions =
@@ -84,7 +84,7 @@ public class SessionViewModel extends AndroidViewModel {
         return filteredSessions;
     }
 
-    public LiveData<List<Module>> getModules() {
+    public LiveData<List<Course>> getModules() {
         return modules;
     }
 
@@ -146,7 +146,7 @@ public class SessionViewModel extends AndroidViewModel {
             source = new ArrayList<>();
         }
 
-        List<Module> listeModules = modules.getValue();
+        List<Course> listeModules = modules.getValue();
         List<Session> resultat = new ArrayList<>();
 
         String requete = normaliser(searchQuery);
@@ -188,13 +188,13 @@ public class SessionViewModel extends AndroidViewModel {
 
     private String trouverNomModule(
             int moduleId,
-            List<Module> listeModules) {
+            List<Course> listeModules) {
 
         if (listeModules == null) {
             return "";
         }
 
-        for (Module module : listeModules) {
+        for (Course module : listeModules) {
             if (module != null && module.getId() == moduleId) {
                 return valeurOuVide(module.getName());
             }
@@ -213,7 +213,7 @@ public class SessionViewModel extends AndroidViewModel {
                     return;
                 }
 
-                Module module = moduleDao.getById(
+                Course module = moduleDao.getById(
                         session.getModuleId()
                 );
 

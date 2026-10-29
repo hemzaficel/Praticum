@@ -21,7 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
-import com.example.praticum.data.entity.Module;
+import com.example.praticum.data.entity.Course;
 import com.example.praticum.data.entity.Session;
 import com.example.praticum.data.entity.SessionCriterion;
 import com.google.android.material.textfield.TextInputLayout;
@@ -57,7 +57,7 @@ public class SessionFormFragment extends Fragment {
 
     private ArrayAdapter<String> moduleAdapter;
 
-    private List<Module> availableModules = new ArrayList<>();
+    private List<Course> availableModules = new ArrayList<>();
 
     public SessionFormFragment() {
         // Constructeur public requis par Android.
@@ -267,7 +267,7 @@ public class SessionFormFragment extends Fragment {
 
                     moduleAdapter.clear();
 
-                    for (Module module : availableModules) {
+                    for (Course module : availableModules) {
                         moduleAdapter.add(
                                 libelleModule(module)
                         );
@@ -356,7 +356,7 @@ public class SessionFormFragment extends Fragment {
                 false
         );
 
-        Module module = trouverModuleParId(
+        Course module = trouverModuleParId(
                 sessionEnEdition.getModuleId()
         );
 
@@ -402,8 +402,8 @@ public class SessionFormFragment extends Fragment {
         actualiserTotal();
     }
 
-    private Module trouverModuleParId(int moduleId) {
-        for (Module module : availableModules) {
+    private Course trouverModuleParId(int moduleId) {
+        for (Course module : availableModules) {
             if (module != null && module.getId() == moduleId) {
                 return module;
             }
@@ -412,12 +412,12 @@ public class SessionFormFragment extends Fragment {
         return null;
     }
 
-    private Module trouverModuleParLibelle(String libelle) {
+    private Course trouverModuleParLibelle(String libelle) {
         if (libelle == null) {
             return null;
         }
 
-        for (Module module : availableModules) {
+        for (Course module : availableModules) {
             if (module != null
                     && libelleModule(module).equals(libelle)) {
                 return module;
@@ -427,7 +427,7 @@ public class SessionFormFragment extends Fragment {
         return null;
     }
 
-    private String libelleModule(Module module) {
+    private String libelleModule(Course module) {
         String nom = module.getName() == null
                 ? ""
                 : module.getName().trim();
@@ -610,7 +610,7 @@ public class SessionFormFragment extends Fragment {
             return;
         }
 
-        Module moduleSelectionne = trouverModuleParLibelle(
+        Course moduleSelectionne = trouverModuleParLibelle(
                 libelleModuleSaisi
         );
 

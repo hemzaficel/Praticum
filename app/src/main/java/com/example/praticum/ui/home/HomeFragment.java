@@ -17,6 +17,11 @@ import androidx.fragment.app.Fragment;
 
 import com.example.praticum.MainActivity;
 import com.example.praticum.R;
+import com.example.praticum.ui.academicyears.AcademicYearsFragment;
+import com.example.praticum.ui.groups.GroupsFragment;
+import com.example.praticum.ui.levels.LevelsFragment;
+import com.example.praticum.ui.modules.ModulesFragment;
+import com.example.praticum.ui.sessions.SessionsFragment;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
@@ -60,6 +65,7 @@ public class HomeFragment extends Fragment {
 
         initializeHeader(view);
         initializeSearch(view);
+        initializeConfigurationCards(view);
 
         return view;
     }
@@ -110,14 +116,32 @@ public class HomeFragment extends Fragment {
         // Éléments que la recherche peut filtrer.
         addSearchableItem(
                 root,
+                R.id.cardDashboardAcademicYears,
+                "Années universitaires année académique"
+        );
+
+        addSearchableItem(
+                root,
+                R.id.cardDashboardLevels,
+                "Niveaux d'étude niveaux L1 L2 L3"
+        );
+
+        addSearchableItem(
+                root,
+                R.id.cardDashboardModules,
+                "Modules matières enseignement"
+        );
+
+        addSearchableItem(
+                root,
                 R.id.cardDashboardGroups,
-                "Groupes et étudiants gérer groupes membres"
+                "Groupes et étudiants membres"
         );
 
         addSearchableItem(
                 root,
                 R.id.cardDashboardSession,
-                "Séances de TP planifier planning"
+                "Séances de TP planification planning"
         );
 
         addSearchableItem(
@@ -224,5 +248,33 @@ public class HomeFragment extends Fragment {
         tilHomeSearch = null;
         etHomeSearch = null;
         super.onDestroyView();
+    }
+
+    private void initializeConfigurationCards(View root) {
+        root.findViewById(R.id.cardDashboardAcademicYears)
+                .setOnClickListener(v ->
+                        ouvrirEcran(new AcademicYearsFragment()));
+
+        root.findViewById(R.id.cardDashboardLevels)
+                .setOnClickListener(v ->
+                        ouvrirEcran(new LevelsFragment()));
+
+        root.findViewById(R.id.cardDashboardModules)
+                .setOnClickListener(v ->
+                        ouvrirEcran(new ModulesFragment()));
+
+        root.findViewById(R.id.cardDashboardGroups)
+                .setOnClickListener(v ->
+                        ouvrirEcran(new GroupsFragment()));
+
+        root.findViewById(R.id.cardDashboardSession)
+                .setOnClickListener(v ->
+                        ouvrirEcran(new SessionsFragment()));
+    }
+
+    private void ouvrirEcran(androidx.fragment.app.Fragment fragment) {
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).ouvrirEcranSecondaire(fragment);
+        }
     }
 }

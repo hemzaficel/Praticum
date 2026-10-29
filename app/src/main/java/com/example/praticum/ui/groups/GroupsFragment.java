@@ -339,16 +339,18 @@ public class GroupsFragment extends Fragment
             return;
         }
 
-        String[] optionsFiltre =
-                new String[GroupViewModel.SUBJECTS.length + 1];
+        String[] specializations = viewModel.getSpecializations();
+
+        String[] optionsFiltre = new String[specializations.length + 1];
 
         optionsFiltre[0] = FILTRE_TOUS;
+
         System.arraycopy(
-                GroupViewModel.SUBJECTS,
+                specializations,
                 0,
                 optionsFiltre,
                 1,
-                GroupViewModel.SUBJECTS.length
+                specializations.length
         );
 
         FilterSortFragment fragment =

@@ -190,6 +190,24 @@
 
                     </com.google.android.material.textfield.TextInputLayout>
 
+                    <TextView
+                        android:id="@+id/tvSessionDerivedLevel"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Niveau : —"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/tvSessionTargetGroups"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Groupes concernés : —"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp" />
+
                 </LinearLayout>
 
             </com.google.android.material.card.MaterialCardView>

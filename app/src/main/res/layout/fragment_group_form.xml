@@ -106,7 +106,7 @@
                         app:boxCornerRadiusTopStart="12dp"
                         app:boxStrokeColor="@color/primary"
                         app:errorEnabled="true"
-                        app:helperText="Ex. : TP-G01">
+                        app:helperText="Ex. : G01">
 
                         <com.google.android.material.textfield.TextInputEditText
                             android:id="@+id/etGroupCode"
@@ -212,7 +212,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:hint="Matière (facultatif)"
+                        android:hint="Spécialité (facultatif)"
                         app:boxBackgroundColor="@color/white"
                         app:boxCornerRadiusBottomEnd="12dp"
                         app:boxCornerRadiusBottomStart="12dp"

@@ -44,6 +44,6 @@ public interface LevelDao {
     @Query("SELECT COUNT(*) FROM student_group WHERE level_id = :levelId")
     int countGroups(long levelId);
 
-    @Query("SELECT COUNT(*) FROM module WHERE level_id = :levelId")
+    @Query("SELECT COUNT(*) FROM Course WHERE level_id = :levelId")
     int countModules(long levelId);
 }

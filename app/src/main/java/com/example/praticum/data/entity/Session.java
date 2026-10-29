@@ -13,7 +13,7 @@ import androidx.room.PrimaryKey;
         tableName = "session",
         foreignKeys = {
                 @ForeignKey(
-                        entity = Module.class,
+                        entity = Course.class,
                         parentColumns = "id",
                         childColumns = "module_id",
                         onDelete = ForeignKey.RESTRICT

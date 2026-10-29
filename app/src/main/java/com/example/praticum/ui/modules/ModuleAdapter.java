@@ -10,7 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
-import com.example.praticum.data.entity.Module;
+import com.example.praticum.data.entity.Course;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -20,17 +20,17 @@ public class ModuleAdapter
         extends RecyclerView.Adapter<ModuleAdapter.ModuleViewHolder> {
 
     public interface OnModuleClickListener {
-        void onModuleClick(Module module);
+        void onModuleClick(Course module);
     }
 
-    private final List<Module> modules = new ArrayList<>();
+    private final List<Course> modules = new ArrayList<>();
     private final OnModuleClickListener listener;
 
     public ModuleAdapter(OnModuleClickListener listener) {
         this.listener = listener;
     }
 
-    public void setModules(List<Module> newModules) {
+    public void setModules(List<Course> newModules) {
         modules.clear();
 
         if (newModules != null) {
@@ -57,7 +57,7 @@ public class ModuleAdapter
             @NonNull ModuleViewHolder holder,
             int position) {
 
-        Module module = modules.get(position);
+        Course module = modules.get(position);
 
         holder.tvCode.setText(module.getCode());
         holder.tvName.setText(module.getName());

@@ -191,11 +191,14 @@ public class GroupFormFragment extends Fragment {
     private void configurerListes() {
 
         // Matières
-        actSubject.setAdapter(new ArrayAdapter<>(
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_dropdown_item_1line,
-                GroupViewModel.SUBJECTS
-        ));
+                viewModel.getSpecializations()
+        );
+
+        actSubject.setAdapter(adapter);
+
 
         actSubject.setOnClickListener(v -> {
             if (peutModifier()) {

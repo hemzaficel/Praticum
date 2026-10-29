@@ -8,7 +8,7 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.praticum.data.database.DatabaseProvider;
-import com.example.praticum.data.entity.Module;
+import com.example.praticum.data.entity.Course;
 import com.example.praticum.data.repository.ModuleRepository;
 
 import java.util.List;
@@ -21,7 +21,7 @@ public class ModuleViewModel extends AndroidViewModel {
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor();
 
-    private final MutableLiveData<List<Module>> modules =
+    private final MutableLiveData<List<Course>> modules =
             new MutableLiveData<>();
     private final MutableLiveData<String> error =
             new MutableLiveData<>();
@@ -38,7 +38,7 @@ public class ModuleViewModel extends AndroidViewModel {
         loadAll();
     }
 
-    public LiveData<List<Module>> getModules() {
+    public LiveData<List<Course>> getModules() {
         return modules;
     }
 
@@ -53,7 +53,7 @@ public class ModuleViewModel extends AndroidViewModel {
     public void loadAll() {
         executor.execute(() -> {
             try {
-                List<Module> result = repository.getAll();
+                List<Course> result = repository.getAll();
                 modules.postValue(result);
             } catch (Exception e) {
                 error.postValue(getErrorMessage(e));
@@ -84,18 +84,18 @@ public class ModuleViewModel extends AndroidViewModel {
         });
     }
 
-    public void add(Module module) {
+    public void add(Course module) {
         executeOperation(() -> repository.insert(module));
     }
 
-    public void update(Module module) {
+    public void update(Course module) {
         executeOperation(() -> {
             repository.update(module);
             return null;
         });
     }
 
-    public void delete(Module module) {
+    public void delete(Course module) {
         executeOperation(() -> {
             repository.delete(module);
             return null;

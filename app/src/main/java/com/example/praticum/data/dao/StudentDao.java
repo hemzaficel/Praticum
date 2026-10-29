@@ -55,4 +55,5 @@ public interface StudentDao {
 
     @Query("SELECT COUNT(*) FROM student")
     int countAll();
+
 }

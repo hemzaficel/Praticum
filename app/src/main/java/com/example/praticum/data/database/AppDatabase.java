@@ -19,7 +19,7 @@ import com.example.praticum.data.dao.EvaluationScoreDao;
 
 import com.example.praticum.data.entity.AcademicYear;
 import com.example.praticum.data.entity.Level;
-import com.example.praticum.data.entity.Module;
+import com.example.praticum.data.entity.Course;
 import com.example.praticum.data.entity.StudentGroup;
 import com.example.praticum.data.entity.Student;
 import com.example.praticum.data.entity.Session;
@@ -35,7 +35,7 @@ import com.example.praticum.data.entity.EvaluationScore;
         entities = {
                 AcademicYear.class,
                 Level.class,
-                Module.class,
+                Course.class,
                 StudentGroup.class,
                 Student.class,
                 Session.class,

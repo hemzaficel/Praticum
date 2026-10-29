@@ -16,7 +16,7 @@ import androidx.lifecycle.ViewModelProvider;
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
 import com.example.praticum.data.entity.Level;
-import com.example.praticum.data.entity.Module;
+import com.example.praticum.data.entity.Course;
 import com.example.praticum.ui.levels.LevelViewModel;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
@@ -36,7 +36,7 @@ public class ModuleFormFragment extends Fragment {
     private long moduleId = -1;
     private int levelId = -1;
 
-    private Module moduleExistant;
+    private Course moduleExistant;
     private boolean sauvegardeEnCours = false;
 
     private TextInputLayout tilCode;
@@ -290,7 +290,7 @@ public class ModuleFormFragment extends Fragment {
                         return;
                     }
 
-                    for (Module element : modules) {
+                    for (Course element : modules) {
                         if (element.getId() == moduleId) {
                             moduleExistant = element;
                             levelId = element.getLevelId();
@@ -304,7 +304,7 @@ public class ModuleFormFragment extends Fragment {
         viewModel.loadAll();
     }
 
-    private void remplirFormulaire(Module module) {
+    private void remplirFormulaire(Course module) {
         etCode.setText(module.getCode());
         etName.setText(module.getName());
         etCoefficient.setText(String.valueOf(module.getCoefficient()));
@@ -403,7 +403,7 @@ public class ModuleFormFragment extends Fragment {
             return;
         }
 
-        Module module = new Module(
+        Course module = new Course(
                 code,
                 name,
                 levelId,

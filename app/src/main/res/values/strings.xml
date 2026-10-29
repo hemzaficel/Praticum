@@ -45,5 +45,13 @@
         <item>Ingénieur</item>
     </string-array>
 
+    <string-array name="specializations">
+        <item>Informatique</item>
+        <item>Sciences Exactes</item>
+        <item>Sciences de la Nature et de la Vie</item>
+        <item>Sciences Économiques et de Gestion</item>
+        <item>Sciences Politiques et Droit</item>
+        <item>Sciences Humaines et Sociales</item>
+    </string-array>
 
 </resources>

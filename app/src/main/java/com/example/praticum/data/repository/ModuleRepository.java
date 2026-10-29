@@ -2,7 +2,7 @@
 package com.example.praticum.data.repository;
 
 import com.example.praticum.data.dao.ModuleDao;
-import com.example.praticum.data.entity.Module;
+import com.example.praticum.data.entity.Course;
 
 import java.util.List;
 
@@ -14,28 +14,28 @@ public class ModuleRepository {
         this.moduleDao = moduleDao;
     }
 
-    public List<Module> getAll() {
+    public List<Course> getAll() {
         return moduleDao.getAll();
     }
 
-    public Module getById(long id) {
+    public Course getById(long id) {
         return moduleDao.getById(id);
     }
 
-    public Module getByCode(String code) {
+    public Course getByCode(String code) {
         return moduleDao.getByCode(code);
     }
 
-    public List<Module> getByLevelId(long levelId) {
+    public List<Course> getByLevelId(long levelId) {
         return moduleDao.getByLevelId(levelId);
     }
 
-    public List<Module> getByLevelAndSemester(
+    public List<Course> getByLevelAndSemester(
             long levelId, int semester) {
         return moduleDao.getByLevelAndSemester(levelId, semester);
     }
 
-    public long insert(Module module) {
+    public long insert(Course module) {
         validate(module);
 
         if (moduleDao.countByCodeAndLevel(
@@ -47,7 +47,7 @@ public class ModuleRepository {
         return moduleDao.insert(module);
     }
 
-    public void update(Module module) {
+    public void update(Course module) {
         validate(module);
 
         if (moduleDao.countByCodeAndLevelExcludingId(
@@ -63,7 +63,7 @@ public class ModuleRepository {
         }
     }
 
-    public void delete(Module module) {
+    public void delete(Course module) {
         if (module == null) {
             throw new IllegalArgumentException(
                     "Le module est obligatoire.");
@@ -74,7 +74,7 @@ public class ModuleRepository {
         }
     }
 
-    private void validate(Module module) {
+    private void validate(Course module) {
         if (module == null) {
             throw new IllegalArgumentException(
                     "Le module est obligatoire.");

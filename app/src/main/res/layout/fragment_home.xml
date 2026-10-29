@@ -362,12 +362,12 @@
 
             </LinearLayout>
 
-            <!-- Accès rapides -->
+            <!-- Configuration indispensable -->
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="26dp"
-                android:text="Accès rapides"
+                android:text="Configuration indispensable"
                 android:textColor="@color/text_primary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -376,16 +376,208 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
-                android:text="Accédez directement à une fonctionnalité"
+                android:text="Préparez les données avant de planifier vos séances"
                 android:textColor="@color/text_secondary"
                 android:textSize="13sp" />
+
+            <!-- Années universitaires -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardDashboardAcademicYears"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="16dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/color_outline"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:background="@drawable/bg_profile_circle"
+                        android:contentDescription="Années universitaires"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_calendar"
+                        app:tint="@color/primary" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Années universitaires"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Définissez les années académiques"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="Ouvrir"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Niveaux d'étude -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardDashboardLevels"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/color_outline"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:background="@drawable/bg_profile_circle"
+                        android:contentDescription="Niveaux d'étude"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_grade"
+                        app:tint="@color/primary" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Niveaux d'étude"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Configurez les niveaux de formation"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="Ouvrir"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- Modules -->
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardDashboardModules"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:clickable="true"
+                android:focusable="true"
+                android:foreground="?attr/selectableItemBackground"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/color_outline"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+
+                    <ImageView
+                        android:layout_width="46dp"
+                        android:layout_height="46dp"
+                        android:background="@drawable/bg_profile_circle"
+                        android:contentDescription="Modules"
+                        android:padding="11dp"
+                        android:src="@drawable/ic_book"
+                        app:tint="@color/primary" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="14dp"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:text="Modules"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Gérez les modules et leurs niveaux"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:contentDescription="Ouvrir"
+                        android:src="@drawable/ic_chevron_right"
+                        app:tint="@color/text_secondary" />
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <!-- Groupes et étudiants -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardDashboardGroups"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="16dp"
+                android:layout_marginTop="10dp"
                 android:clickable="true"
                 android:focusable="true"
                 android:foreground="?attr/selectableItemBackground"
@@ -430,10 +622,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Gérez les groupes et leurs membres"
+                            android:text="Organisez les groupes et leurs membres"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
-
                     </LinearLayout>
 
                     <ImageView
@@ -442,12 +633,10 @@
                         android:contentDescription="Ouvrir"
                         android:src="@drawable/ic_chevron_right"
                         app:tint="@color/text_secondary" />
-
                 </LinearLayout>
-
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Séances -->
+            <!-- Accès aux séances -->
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardDashboardSession"
                 android:layout_width="match_parent"
@@ -497,10 +686,9 @@
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="4dp"
-                            android:text="Consultez et planifiez vos séances"
+                            android:text="Planifiez les séances après configuration"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
-
                     </LinearLayout>
 
                     <ImageView
@@ -509,9 +697,7 @@
                         android:contentDescription="Ouvrir"
                         android:src="@drawable/ic_chevron_right"
                         app:tint="@color/text_secondary" />
-
                 </LinearLayout>
-
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Évaluations -->
@@ -540,7 +726,7 @@
                         android:layout_width="46dp"
                         android:layout_height="46dp"
                         android:background="@drawable/bg_profile_circle"
-                        android:contentDescription="Évaluations et notes"
+                        android:contentDescription="Évaluations"
                         android:padding="11dp"
                         android:src="@drawable/ic_grade"
                         app:tint="@color/primary" />
@@ -567,7 +753,6 @@
                             android:text="Consultez les évaluations des étudiants"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
-
                     </LinearLayout>
 
                     <ImageView
@@ -576,9 +761,7 @@
                         android:contentDescription="Ouvrir"
                         android:src="@drawable/ic_chevron_right"
                         app:tint="@color/text_secondary" />
-
                 </LinearLayout>
-
             </com.google.android.material.card.MaterialCardView>
 
             <!-- Activité récente -->

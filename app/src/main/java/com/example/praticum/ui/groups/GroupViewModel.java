@@ -15,6 +15,7 @@ import com.example.praticum.data.database.DatabaseProvider;
 import com.example.praticum.data.entity.AcademicYear;
 import com.example.praticum.data.entity.StudentGroup;
 import com.example.praticum.data.repository.StudentGroupRepository;
+import com.example.praticum.R;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -26,14 +27,13 @@ import java.util.concurrent.Executors;
 public class GroupViewModel extends AndroidViewModel {
 
     /**
-     * Matières proposées dans le formulaire et dans le filtre de la liste.
+     * Retourne les spécialités définies dans res/values/strings.xml.
      */
-    public static final String[] SUBJECTS = {
-            "Informatique",
-            "Électronique",
-            "Automatisme",
-            "Réseaux informatiques"
-    };
+    public String[] getSpecializations() {
+        return getApplication()
+                .getResources()
+                .getStringArray(R.array.specializations);
+    }
 
     private final StudentGroupRepository repository;
     private final StudentGroupDao groupDao;

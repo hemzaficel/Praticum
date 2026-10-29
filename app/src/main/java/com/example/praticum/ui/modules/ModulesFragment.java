@@ -22,7 +22,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.praticum.MainActivity;
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
-import com.example.praticum.data.entity.Module;
+import com.example.praticum.data.entity.Course;
 import com.google.android.material.chip.Chip;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.textfield.TextInputEditText;
@@ -55,7 +55,7 @@ public class ModulesFragment extends Fragment {
 
     private View btnSearch;
 
-    private final List<Module> modules = new ArrayList<>();
+    private final List<Course> modules = new ArrayList<>();
 
     private String searchQuery = "";
     private Integer semesterFilter = null;
@@ -356,10 +356,10 @@ public class ModulesFragment extends Fragment {
             return;
         }
 
-        List<Module> resultats = new ArrayList<>();
+        List<Course> resultats = new ArrayList<>();
         String query = normaliser(searchQuery);
 
-        for (Module module : modules) {
+        for (Course module : modules) {
             if (module == null) {
                 continue;
             }
@@ -431,7 +431,7 @@ public class ModulesFragment extends Fragment {
                 : texte.trim().toLowerCase(Locale.ROOT);
     }
 
-    private void ouvrirDetail(Module module) {
+    private void ouvrirDetail(Course module) {
         if (module == null || !isAdded()) {
             return;
         }

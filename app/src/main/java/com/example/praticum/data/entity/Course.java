@@ -25,7 +25,9 @@ import androidx.room.PrimaryKey;
                 @Index(value = {"level_id"})
         }
 )
-public class Module {
+
+//Une matière ou un module
+public class Course {
 
     @PrimaryKey(autoGenerate = true)
     private int id;
@@ -48,7 +50,7 @@ public class Module {
     @ColumnInfo(name = "description")
     private String description;
 
-    public Module(
+    public Course(
             String code,
             String name,
             int levelId,

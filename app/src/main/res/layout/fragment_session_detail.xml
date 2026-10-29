@@ -71,6 +71,15 @@
                         android:textSize="21sp"
                         android:textStyle="bold" />
 
+                    <TextView
+                        android:id="@+id/tvSessionDetailTargetGroups"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="Groupes concernés : —"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="14sp" />
+
                     <!-- Type d'activité -->
                     <LinearLayout
                         android:layout_width="match_parent"

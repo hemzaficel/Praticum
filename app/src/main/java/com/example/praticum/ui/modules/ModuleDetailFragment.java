@@ -15,8 +15,8 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.data.entity.Course;
 import com.example.praticum.data.entity.Level;
-import com.example.praticum.data.entity.Module;
 import com.example.praticum.ui.levels.LevelViewModel;
 import com.google.android.material.button.MaterialButton;
 
@@ -29,7 +29,7 @@ public class ModuleDetailFragment extends Fragment {
     private ModuleViewModel viewModel;
     private LevelViewModel levelViewModel;
 
-    private Module module;
+    private Course module;
     private View vueFragment;
 
     private boolean suppressionEnCours = false;
@@ -113,7 +113,7 @@ public class ModuleDetailFragment extends Fragment {
                         return;
                     }
 
-                    for (Module element : modules) {
+                    for (Course element : modules) {
                         if (element.getId() == moduleId) {
                             module = element;
                             afficherModule(vueFragment);
