@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <!-- Couleurs principales -->
+    <color name="primary">#087F8C</color>
+    <color name="primary_dark">#075E66</color>
+    <color name="secondary">#159AA5</color>
+
+    <!-- Arrière-plans -->
+    <color name="screen_background">#F3F7F8</color>
+    <color name="white">#FFFFFF</color>
+    <color name="color_info_container">#D9F0F2</color>
+
+    <!-- Textes -->
+    <color name="text_primary">#173B45</color>
+    <color name="text_secondary">#647780</color>
+
+    <!-- Bordures et séparateurs -->
+    <color name="color_outline">#D6E4E7</color>
+    <color name="color_divider">#DFE9EB</color>
+
+    <!-- Succès -->
+    <color name="color_success">#247547</color>
+    <color name="color_success_container">#DDF5E6</color>
+
+    <!-- Absence et erreur -->
+    <color name="color_absent">#B42332</color>
+    <color name="color_error_container">#FCE4E5</color>
+
+    <!-- Retard -->
+    <color name="color_late">#985600</color>
+    <color name="color_late_container">#FFF0D6</color>
+
+    <!-- Effet de pression -->
+    <color name="color_ripple">#33159AA5</color>
+
+
+    <color name="search_chip_background">#D9F0F2</color>
+
+
+
+</resources>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:orientation="vertical"
+    android:gravity="center_horizontal"
+    android:padding="24dp"
+    android:background="@drawable/bg_menu_selected">
+
+    <!-- Icône -->
+    <FrameLayout
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginBottom="16dp"
+        android:background="@drawable/bg_profile_circle">
+
+        <ImageView
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:layout_gravity="center"
+            android:contentDescription="@null"
+            android:src="@drawable/ic_person"
+            app:tint="@color/primary" />
+
+    </FrameLayout>
+
+    <!-- Titre -->
+    <TextView
+        android:id="@+id/tvLogoutTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Se déconnecter ?"
+        android:textColor="@color/text_primary"
+        android:textSize="21sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Message -->
+    <TextView
+        android:id="@+id/tvLogoutMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Votre session va être fermée. Vos groupes, étudiants, séances, évaluations et résultats resteront enregistrés sur cet appareil."
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:lineSpacingExtra="4dp"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Annuler -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnLogoutCancel"
+        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:text="Annuler"
+        android:textAllCaps="false"
+        android:textColor="@color/text_primary"
+        app:strokeColor="@color/color_outline" />
+
+    <!-- Déconnexion -->
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnLogoutConfirm"
+        style="@style/Widget.MaterialComponents.Button"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:minHeight="48dp"
+        android:layout_marginTop="10dp"
+        android:text="Se déconnecter"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        android:backgroundTint="@color/color_absent" />
+
+</LinearLayout>

@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Navigation principale -->
+    <group android:checkableBehavior="single">
+
+        <item
+            android:id="@+id/nav_dashboard"
+            android:icon="@drawable/ic_home_24"
+            android:title="Accueil" />
+
+        <item
+            android:id="@+id/nav_groups"
+            android:icon="@drawable/ic_groups_24"
+            android:title="Groupes" />
+
+        <item
+            android:id="@+id/nav_students"
+            android:icon="@drawable/ic_students_24"
+            android:title="@string/nav_students" />
+
+        <item
+            android:id="@+id/nav_sessions"
+            android:icon="@drawable/ic_calendar"
+            android:title="Séances" />
+
+        <item
+            android:id="@+id/nav_reports"
+            android:icon="@drawable/ic_stats_24"
+            android:title="Bilans et statistiques" />
+
+    </group>
+
+    <!-- Gestion pédagogique -->
+    <item android:title="Gestion pédagogique">
+
+        <menu>
+
+            <item
+                android:id="@+id/nav_modules"
+                android:icon="@drawable/ic_book"
+                android:title="Modules" />
+
+            <item
+                android:id="@+id/nav_levels"
+                android:icon="@drawable/ic_school"
+                android:title="Niveaux d'études" />
+
+            <item
+                android:id="@+id/nav_academic_years"
+                android:icon="@drawable/ic_academic_year"
+                android:title="Années universitaires" />
+
+        </menu>
+
+    </item>
+
+    <!-- Outils et application -->
+    <item android:title="Outils et application">
+
+        <menu>
+
+            <item
+                android:id="@+id/nav_search"
+                android:icon="@drawable/ic_search"
+                android:title="Recherche globale" />
+
+            <item
+                android:id="@+id/nav_notifications"
+                android:icon="@drawable/ic_notification"
+                android:title="Notifications et rappels" />
+
+            <item
+                android:id="@+id/nav_archives"
+                android:icon="@drawable/ic_archive"
+                android:title="Archives" />
+
+            <item
+                android:id="@+id/nav_trash"
+                android:icon="@drawable/ic_menu"
+                android:title="Corbeille" />
+
+            <item
+                android:id="@+id/nav_activity_log"
+                android:icon="@drawable/ic_log_activity"
+                android:title="Journal d’activité" />
+
+            <item
+                android:id="@+id/nav_settings"
+                android:icon="@drawable/ic_tune"
+                android:title="Paramètres" />
+
+            <item
+                android:id="@+id/nav_about"
+                android:icon="@drawable/ic_info_24"
+                android:title="À propos" />
+
+        </menu>
+
+    </item>
+
+</menu>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Icône "Année universitaire" : calendrier + toque de diplômé
+     À placer dans : app/src/main/res/drawable/ic_annee_universitaire.xml -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="48dp"
+    android:height="48dp"
+    android:viewportWidth="100"
+    android:viewportHeight="100">
+
+    <!-- Anneaux du calendrier : halo blanc puis trait noir -->
+    <path
+        android:pathData="M30,7 V21 M70,7 V21"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="9"
+        android:strokeLineCap="round" />
+    <path
+        android:pathData="M30,7 V21 M70,7 V21"
+        android:strokeColor="#000000"
+        android:strokeWidth="5"
+        android:strokeLineCap="round" />
+
+    <!-- Corps du calendrier : en-tête plein + contour -->
+    <path
+        android:fillColor="#000000"
+        android:fillType="evenOdd"
+        android:pathData="M16,14 H84 A8,8 0 0 1 92,22 V84 A8,8 0 0 1 84,92 H16 A8,8 0 0 1 8,84 V22 A8,8 0 0 1 16,14 Z
+                          M13,34 H87 V84 A3,3 0 0 1 84,87 H16 A3,3 0 0 1 13,84 Z" />
+
+    <!-- Rangée 1 -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M20,42 h7 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-7 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 z
+                          M36,42 h7 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-7 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 z" />
+    <!-- Rangée 2 -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M20,58 h7 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-7 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 z
+                          M36,58 h7 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-7 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 z" />
+    <!-- Rangée 3 -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M20,74 h7 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-7 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 z
+                          M36,74 h7 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-7 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 z
+                          M52,74 h7 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-7 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 z
+                          M68,74 h7 a2,2 0 0 1 2,2 v7 a2,2 0 0 1 -2,2 h-7 a2,2 0 0 1 -2,-2 v-7 a2,2 0 0 1 2,-2 z" />
+
+    <!-- Toque : plateau (losange) -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M52,49 L70,42 L88,49 L70,57 Z" />
+    <!-- Toque : calotte -->
+    <path
+        android:fillColor="#000000"
+        android:pathData="M60,55.5 L70,59.5 L80,55.5 V64 Q70,70 60,64 Z" />
+
+</vector>

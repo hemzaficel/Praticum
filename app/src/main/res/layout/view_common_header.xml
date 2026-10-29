@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/layoutCommonHeaderContainer"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:background="@color/primary">
+
+    <!-- En-tête principal -->
+    <LinearLayout
+        android:id="@+id/layoutCommonHeader"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        android:paddingStart="20dp"
+        android:paddingTop="14dp"
+        android:paddingEnd="20dp"
+        android:paddingBottom="12dp">
+
+        <!-- Menu latéral -->
+        <ImageButton
+            android:id="@+id/btnCommonMenu"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginEnd="12dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Ouvrir le menu latéral"
+            android:padding="10dp"
+            android:src="@drawable/ic_menu"
+            app:tint="@color/white" />
+
+        <!-- Titre et sous-titre -->
+        <LinearLayout
+            android:id="@+id/layoutCommonHeaderTitles"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tvCommonHeaderTitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Titre de la page"
+                android:textColor="@color/white"
+                android:textSize="21sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvCommonHeaderSubtitle"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:alpha="0.85"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="Sous-titre de la page"
+                android:textColor="@color/white"
+                android:textSize="13sp" />
+
+        </LinearLayout>
+
+        <!-- Bouton de recherche -->
+        <ImageButton
+            android:id="@+id/btnCommonHeaderSearch"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_marginStart="6dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:contentDescription="Afficher la recherche"
+            android:padding="11dp"
+            android:src="@drawable/ic_search"
+            app:tint="@color/white" />
+
+    </LinearLayout>
+
+    <!-- Séparateur inférieur -->
+    <View
+        android:id="@+id/viewCommonHeaderDivider"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:background="@color/primary_dark" />
+
+</LinearLayout>

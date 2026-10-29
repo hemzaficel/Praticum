@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="24dp"
+    android:background="@drawable/bg_menu_selected">
+
+    <!-- Icône de confirmation -->
+    <ImageView
+        android:id="@+id/ivConfirmationIcon"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_gravity="center_horizontal"
+        android:layout_marginBottom="16dp"
+        android:contentDescription="@null"
+        android:src="@drawable/ic_warning"
+        android:scaleType="fitCenter" />
+
+    <!-- Titre -->
+    <TextView
+        android:id="@+id/tvConfirmationTitle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Confirmer la suppression"
+        android:textColor="@color/text_primary"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="12dp" />
+
+    <!-- Description des conséquences -->
+    <TextView
+        android:id="@+id/tvConfirmationMessage"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Cette opération peut entraîner la suppression définitive des données associées."
+        android:textColor="@color/text_secondary"
+        android:textSize="15sp"
+        android:lineSpacingExtra="4dp"
+        android:gravity="center"
+        android:layout_marginBottom="24dp" />
+
+    <!-- Boutons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:baselineAligned="false">
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnConfirmationCancel"
+            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="8dp"
+            android:text="Annuler"
+            android:textAllCaps="false"
+            android:textColor="@color/text_primary"
+            android:strokeColor="@color/color_outline" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/btnConfirmationAction"
+            style="@style/Widget.MaterialComponents.Button"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:text="Supprimer"
+            android:textAllCaps="false"
+            android:textColor="@color/white"
+            android:backgroundTint="@color/color_absent" />
+
+    </LinearLayout>
+
+</LinearLayout>

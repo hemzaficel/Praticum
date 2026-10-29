@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <item
+        android:id="@+id/nav_dashboard"
+        android:icon="@drawable/ic_home_24"
+        android:title="@string/nav_home" />
+
+    <item
+        android:id="@+id/nav_groups"
+        android:icon="@drawable/ic_groups_24"
+        android:title="@string/nav_groups" />
+
+    <item
+        android:id="@+id/nav_students"
+        android:icon="@drawable/ic_students_24"
+        android:title="@string/nav_students" />
+
+    <item
+        android:id="@+id/nav_sessions"
+        android:icon="@drawable/ic_sessions_24"
+        android:title="@string/nav_sessions" />
+
+    <item
+        android:id="@+id/nav_reports"
+        android:icon="@drawable/ic_stats_24"
+        android:title="@string/nav_reports" />
+
+</menu>

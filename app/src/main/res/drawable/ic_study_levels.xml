@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="40dp"
+    android:height="40dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- Premier niveau (ex: Licence 1 / Base) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M4,16h16a2,2 0 0,1 2,2v2a2,2 0 0,1 -2,2H4a2,2 0 0,1 -2,-2v-2a2,2 0 0,1 2,-2z" />
+
+    <!-- Deuxième niveau (ex: Licence 2 / Master 1) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M5,10h14a2,2 0 0,1 2,2v2a2,2 0 0,1 -2,2H5a2,2 0 0,1 -2,-2v-2a2,2 0 0,1 2,-2z" />
+
+    <!-- Troisième niveau (ex: Licence 3 / Master 2 / Sommet) -->
+    <path
+        android:fillColor="@android:color/transparent"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M6,4h12a2,2 0 0,1 2,2v2a2,2 0 0,1 -2,2H6a2,2 0 0,1 -2,-2v-2a2,2 0 0,1 2,-2z" />
+
+</vector>
