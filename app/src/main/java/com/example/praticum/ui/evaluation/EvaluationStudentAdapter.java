@@ -1,4 +1,3 @@
-
 package com.example.praticum.ui.evaluation;
 
 import android.view.LayoutInflater;
@@ -10,16 +9,19 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
-import com.example.praticum.ui.attendance.AttendanceRecordMemory;
+import com.example.praticum.data.entity.EvaluationTeam;
+import com.example.praticum.data.entity.Student;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
 public class EvaluationStudentAdapter
-        extends RecyclerView.Adapter<EvaluationStudentAdapter.StudentViewHolder> {
+        extends RecyclerView.Adapter<
+        EvaluationStudentAdapter.StudentViewHolder> {
 
-    private final List<StudentEvaluationItem> items = new ArrayList<>();
+    private final List<StudentEvaluationItem> items =
+            new ArrayList<>();
 
     public EvaluationStudentAdapter() {
     }
@@ -37,24 +39,32 @@ public class EvaluationStudentAdapter
     @NonNull
     @Override
     public StudentViewHolder onCreateViewHolder(
-            @NonNull ViewGroup parent, int viewType) {
+            @NonNull ViewGroup parent,
+            int viewType) {
 
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_evaluation_student, parent, false);
+                .inflate(
+                        R.layout.item_evaluation_student,
+                        parent,
+                        false
+                );
 
         return new StudentViewHolder(view);
     }
 
     @Override
     public void onBindViewHolder(
-            @NonNull StudentViewHolder holder, int position) {
+            @NonNull StudentViewHolder holder,
+            int position) {
 
         StudentEvaluationItem item = items.get(position);
-        AttendanceRecordMemory student = item.getStudent();
 
-        holder.tvName.setText(student.getStudentName());
+        Student student = item.getStudentEntry().getStudent();
+
+        holder.tvName.setText(student.getFullName());
 
         String matricule = student.getMatricule();
+
         holder.tvMatricule.setText(
                 matricule == null || matricule.trim().isEmpty()
                         ? "Matricule non renseigné"
@@ -67,10 +77,15 @@ public class EvaluationStudentAdapter
 
         if (item.isEvaluated()) {
             holder.tvScore.setText(
-                    String.format(Locale.getDefault(),
-                            "%.2f / 20", item.getScoreSur20())
+                    String.format(
+                            Locale.getDefault(),
+                            "%.2f / 20",
+                            item.getScoreSur20()
+                    )
             );
+
             holder.tvStatus.setText("Évalué");
+
         } else {
             holder.tvScore.setText("— / 20");
             holder.tvStatus.setText("Non évalué");
@@ -93,38 +108,56 @@ public class EvaluationStudentAdapter
         StudentViewHolder(@NonNull View itemView) {
             super(itemView);
 
-            tvName = itemView.findViewById(R.id.tvEvaluationStudentName);
-            tvMatricule = itemView.findViewById(R.id.tvEvaluationStudentMatricule);
-            tvScore = itemView.findViewById(R.id.tvEvaluationStudentScore);
-            tvGroup = itemView.findViewById(R.id.tvEvaluationStudentGroup);
-            tvStatus = itemView.findViewById(R.id.tvEvaluationStudentStatus);
+            tvName = itemView.findViewById(
+                    R.id.tvEvaluationStudentName
+            );
+
+            tvMatricule = itemView.findViewById(
+                    R.id.tvEvaluationStudentMatricule
+            );
+
+            tvScore = itemView.findViewById(
+                    R.id.tvEvaluationStudentScore
+            );
+
+            tvGroup = itemView.findViewById(
+                    R.id.tvEvaluationStudentGroup
+            );
+
+            tvStatus = itemView.findViewById(
+                    R.id.tvEvaluationStudentStatus
+            );
         }
     }
 
-    public static class StudentEvaluationItem {
+    public static final class StudentEvaluationItem {
 
-        private final AttendanceRecordMemory student;
-        private final EvaluationTeamMemory team;
+        private final EvaluationViewModel.StudentWithGroup studentEntry;
+        private final EvaluationTeam team;
         private final boolean evaluated;
         private final double scoreSur20;
 
         public StudentEvaluationItem(
-                AttendanceRecordMemory student,
-                EvaluationTeamMemory team,
+                EvaluationViewModel.StudentWithGroup studentEntry,
+                EvaluationTeam team,
                 boolean evaluated,
                 double scoreSur20) {
 
-            this.student = student;
+            this.studentEntry = studentEntry;
             this.team = team;
             this.evaluated = evaluated;
             this.scoreSur20 = scoreSur20;
         }
 
-        public AttendanceRecordMemory getStudent() {
-            return student;
+        public EvaluationViewModel.StudentWithGroup getStudentEntry() {
+            return studentEntry;
         }
 
-        public EvaluationTeamMemory getTeam() {
+        public Student getStudent() {
+            return studentEntry.getStudent();
+        }
+
+        public EvaluationTeam getTeam() {
             return team;
         }
 

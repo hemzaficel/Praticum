@@ -10,27 +10,27 @@ import android.view.ViewGroup;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.MainActivity;
 import com.example.praticum.R;
-
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.data.entity.Session;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 
 public class SessionsFragment extends Fragment {
 
-    private SessionRepositoryMemory repository;
+    private SessionViewModel viewModel;
     private SessionAdapter adapter;
 
     private RecyclerView containerSessions;
@@ -44,6 +44,7 @@ public class SessionsFragment extends Fragment {
 
     private String searchQuery = "";
     private String selectedStatus = "Tous";
+
     private boolean rechercheVisible = false;
 
     public SessionsFragment() {
@@ -71,7 +72,8 @@ public class SessionsFragment extends Fragment {
 
         super.onViewCreated(view, savedInstanceState);
 
-        repository = SessionRepositoryMemory.getInstance();
+        viewModel = new ViewModelProvider(this)
+                .get(SessionViewModel.class);
 
         initialiserVues(view);
         configurerEntete(view);
@@ -79,21 +81,41 @@ public class SessionsFragment extends Fragment {
         configurerRecherche();
         configurerCreation(view);
         configurerTri();
+        observerDonnees();
 
-        actualiserListe();
+        viewModel.setSearchQuery(searchQuery);
+        viewModel.setStatusFilter(selectedStatus);
     }
 
     private void initialiserVues(View view) {
-        containerSessions = view.findViewById(R.id.containerSessions);
-        emptyState = view.findViewById(R.id.layoutSessionsEmpty);
-        countView = view.findViewById(R.id.tvSessionsCount);
+        containerSessions = view.findViewById(
+                R.id.containerSessions
+        );
 
-        searchLayout = view.findViewById(R.id.tilSessionsSearch);
-        searchInput = view.findViewById(R.id.etSessionsSearch);
-        sortButton = view.findViewById(R.id.btnSessionsSort);
+        emptyState = view.findViewById(
+                R.id.layoutSessionsEmpty
+        );
+
+        countView = view.findViewById(
+                R.id.tvSessionsCount
+        );
+
+        searchLayout = view.findViewById(
+                R.id.tilSessionsSearch
+        );
+
+        searchInput = view.findViewById(
+                R.id.etSessionsSearch
+        );
+
+        sortButton = view.findViewById(
+                R.id.btnSessionsSort
+        );
 
         if (searchLayout != null) {
-            searchLayout.setVisibility(View.GONE);
+            searchLayout.setVisibility(
+                    rechercheVisible ? View.VISIBLE : View.GONE
+            );
         }
     }
 
@@ -110,10 +132,14 @@ public class SessionsFragment extends Fragment {
                 }
         );
 
-        btnSearch = view.findViewById(R.id.btnCommonHeaderSearch);
+        btnSearch = view.findViewById(
+                R.id.btnCommonHeaderSearch
+        );
 
         if (btnSearch != null) {
-            btnSearch.setOnClickListener(v -> basculerRecherche());
+            btnSearch.setOnClickListener(
+                    v -> basculerRecherche()
+            );
         }
     }
 
@@ -125,6 +151,7 @@ public class SessionsFragment extends Fragment {
         containerSessions.setNestedScrollingEnabled(false);
 
         adapter = new SessionAdapter(this::ouvrirDetail);
+
         containerSessions.setAdapter(adapter);
     }
 
@@ -132,6 +159,8 @@ public class SessionsFragment extends Fragment {
         if (searchInput == null) {
             return;
         }
+
+        searchInput.setText(searchQuery);
 
         searchInput.addTextChangedListener(new TextWatcher() {
             @Override
@@ -150,8 +179,13 @@ public class SessionsFragment extends Fragment {
                     int before,
                     int count) {
 
-                searchQuery = s == null ? "" : s.toString().trim();
-                actualiserListe();
+                searchQuery = s == null
+                        ? ""
+                        : s.toString().trim();
+
+                if (viewModel != null) {
+                    viewModel.setSearchQuery(searchQuery);
+                }
             }
 
             @Override
@@ -162,7 +196,7 @@ public class SessionsFragment extends Fragment {
     }
 
     private void basculerRecherche() {
-        if (searchLayout == null) {
+        if (searchLayout == null || searchInput == null) {
             return;
         }
 
@@ -174,7 +208,9 @@ public class SessionsFragment extends Fragment {
 
             InputMethodManager imm =
                     (InputMethodManager) requireContext()
-                            .getSystemService(Context.INPUT_METHOD_SERVICE);
+                            .getSystemService(
+                                    Context.INPUT_METHOD_SERVICE
+                            );
 
             if (imm != null) {
                 imm.showSoftInput(
@@ -182,13 +218,16 @@ public class SessionsFragment extends Fragment {
                         InputMethodManager.SHOW_IMPLICIT
                 );
             }
+
         } else {
             searchInput.setText("");
             searchLayout.setVisibility(View.GONE);
 
             InputMethodManager imm =
                     (InputMethodManager) requireContext()
-                            .getSystemService(Context.INPUT_METHOD_SERVICE);
+                            .getSystemService(
+                                    Context.INPUT_METHOD_SERVICE
+                            );
 
             if (imm != null) {
                 imm.hideSoftInputFromWindow(
@@ -200,11 +239,13 @@ public class SessionsFragment extends Fragment {
     }
 
     private void configurerCreation(View view) {
-        View btnCreateSession = view.findViewById(R.id.btnCreateSession);
+        View btnCreateSession = view.findViewById(
+                R.id.btnCreateSession
+        );
 
         if (btnCreateSession != null) {
             btnCreateSession.setOnClickListener(
-                    v -> ouvrirFormulaire(null)
+                    v -> ouvrirFormulaire()
             );
         }
     }
@@ -214,92 +255,81 @@ public class SessionsFragment extends Fragment {
             return;
         }
 
-        // Le mécanisme de tri existant peut être conservé ici.
-        // Aucun nouveau comportement de tri n'est imposé.
+        /*
+         * Le bouton de tri existant ne définissait pas de mécanisme
+         * de tri fonctionnel. Aucun nouveau comportement n'est ajouté.
+         */
     }
 
-    private void actualiserListe() {
-        if (repository == null || adapter == null) {
+    private void observerDonnees() {
+        viewModel.getSessions().observe(
+                getViewLifecycleOwner(),
+                this::afficherListe
+        );
+
+        viewModel.getOperationResult().observe(
+                getViewLifecycleOwner(),
+                resultat -> {
+                    if (resultat == null) {
+                        return;
+                    }
+
+                    viewModel.clearOperationResult();
+
+                    if (!resultat.isSuccess() && isAdded()) {
+                        Toast.makeText(
+                                requireContext(),
+                                resultat.getMessage(),
+                                Toast.LENGTH_SHORT
+                        ).show();
+                    }
+                }
+        );
+    }
+
+    private void afficherListe(List<Session> sessions) {
+        if (adapter == null) {
             return;
         }
 
-        List<SessionMemory> sessions = repository.getActiveSessions();
-        List<SessionMemory> resultats = new ArrayList<>();
+        adapter.submitList(sessions);
 
-        String requete = normaliser(searchQuery);
-
-        for (SessionMemory session : sessions) {
-            if (session == null) {
-                continue;
-            }
-
-            boolean correspondRecherche = requete.isEmpty();
-
-            if (!correspondRecherche) {
-                String contenu = normaliser(
-                        valeurOuVide(session.getTitle()) + " "
-                                + valeurOuVide(session.getActivityType()) + " "
-                                + valeurOuVide(session.getModule()) + " "
-                                + valeurOuVide(session.getDescription())
-                );
-
-                correspondRecherche = contenu.contains(requete);
-            }
-
-            boolean correspondStatut =
-                    "Tous".equalsIgnoreCase(selectedStatus)
-                            || selectedStatus.equalsIgnoreCase(
-                            valeurOuVide(session.getStatus())
-                    );
-
-            if (correspondRecherche && correspondStatut) {
-                resultats.add(session);
-            }
-        }
-
-        adapter.submitList(resultats);
+        int nombre = sessions == null ? 0 : sessions.size();
+        boolean listeVide = nombre == 0;
 
         if (emptyState != null) {
             emptyState.setVisibility(
-                    resultats.isEmpty() ? View.VISIBLE : View.GONE
+                    listeVide ? View.VISIBLE : View.GONE
             );
         }
 
         if (containerSessions != null) {
             containerSessions.setVisibility(
-                    resultats.isEmpty() ? View.GONE : View.VISIBLE
+                    listeVide ? View.GONE : View.VISIBLE
             );
         }
 
         if (countView != null) {
-            int nombreSeances = resultats.size();
-
-            countView.setText(nombreSeances + (nombreSeances > 1
-                    ? " activités affichées"
-                    : " activité affichée")
+            countView.setText(
+                    nombre
+                            + (nombre > 1
+                            ? " activités affichées"
+                            : " activité affichée")
             );
         }
     }
 
-    private String normaliser(String texte) {
-        return texte == null
-                ? ""
-                : texte.toLowerCase(Locale.ROOT).trim();
-    }
-
-    private String valeurOuVide(String valeur) {
-        return valeur == null ? "" : valeur;
-    }
-
-    private void ouvrirDetail(SessionMemory session) {
+    private void ouvrirDetail(Session session) {
         if (session == null) {
             return;
         }
 
-        SessionDetailFragment fragment = new SessionDetailFragment();
+        SessionDetailFragment fragment =
+                new SessionDetailFragment();
 
         Bundle args = new Bundle();
         args.putInt("session_id", session.getId());
+
         fragment.setArguments(args);
 
         requireActivity()
@@ -310,14 +340,9 @@ public class SessionsFragment extends Fragment {
                 .commit();
     }
 
-    private void ouvrirFormulaire(@Nullable SessionMemory session) {
-        SessionFormFragment fragment = new SessionFormFragment();
-
-        if (session != null) {
-            Bundle args = new Bundle();
-            args.putInt("session_id", session.getId());
-            fragment.setArguments(args);
-        }
+    private void ouvrirFormulaire() {
+        SessionFormFragment fragment =
+                new SessionFormFragment();
 
         requireActivity()
                 .getSupportFragmentManager()
@@ -330,7 +355,15 @@ public class SessionsFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
-        actualiserListe();
+
+        /*
+         * Recharge les données quand on revient du formulaire
+         * ou de l'écran de détail.
+         */
+        if (viewModel != null) {
+            viewModel.loadModules();
+            viewModel.loadSessions();
+        }
     }
 
     @Override

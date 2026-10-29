@@ -1,4 +1,3 @@
-
 package com.example.praticum.ui.evaluation;
 
 import android.os.Bundle;
@@ -8,15 +7,17 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
-import com.example.praticum.ui.attendance.AttendanceRecordMemory;
+import com.example.praticum.data.entity.EvaluationTeam;
 import com.google.android.material.button.MaterialButtonToggleGroup;
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -32,7 +33,7 @@ public class SessionEvaluationsFragment extends Fragment {
     private int sessionId = -1;
     private String sessionTitle = "";
 
-    private EvaluationSheetMemory sheet;
+    private EvaluationViewModel viewModel;
 
     private TextView tvAverage;
     private TextView tvBestScore;
@@ -41,19 +42,22 @@ public class SessionEvaluationsFragment extends Fragment {
 
     private TextInputEditText searchInput;
     private MaterialButtonToggleGroup filterGroup;
+
     private RecyclerView resultsRecyclerView;
     private View emptyLayout;
 
     private EvaluationStudentAdapter adapter;
 
-    private final List<EvaluationTeamMemory> teams = new ArrayList<>();
-
-    private final List<EvaluationStudentAdapter.StudentEvaluationItem> allItems =
-            new ArrayList<>();
+    private final List<EvaluationStudentAdapter.StudentEvaluationItem>
+            allItems = new ArrayList<>();
 
     private String searchQuery = "";
 
     private int activeFilter = R.id.btnEvaluationResultAll;
+
+    public SessionEvaluationsFragment() {
+        // Constructeur public requis par Android.
+    }
 
     @Nullable
     @Override
@@ -73,19 +77,35 @@ public class SessionEvaluationsFragment extends Fragment {
     public void onViewCreated(
             @NonNull View view,
             @Nullable Bundle savedInstanceState) {
+
         super.onViewCreated(view, savedInstanceState);
+
+        viewModel = new ViewModelProvider(this)
+                .get(EvaluationViewModel.class);
 
         Bundle args = getArguments();
 
         if (args != null) {
             sessionId = args.getInt(ARG_SESSION_ID, -1);
-            sessionTitle = args.getString(ARG_SESSION_TITLE, "");
+
+            sessionTitle = args.getString(
+                    ARG_SESSION_TITLE,
+                    ""
+            );
         }
 
         initialiserVues(view);
         configurerRecyclerView();
         configurerActions();
-        chargerEvaluation();
+        observerDonnees();
+
+        if (sessionId <= 0) {
+            afficherMessage("Séance invalide.");
+            getParentFragmentManager().popBackStack();
+            return;
+        }
+
+        viewModel.loadSheet(sessionId);
     }
 
     private void initialiserVues(@NonNull View view) {
@@ -137,42 +157,42 @@ public class SessionEvaluationsFragment extends Fragment {
     }
 
     private void configurerActions() {
-
         if (searchInput != null) {
-            searchInput.addTextChangedListener(new TextWatcher() {
+            searchInput.addTextChangedListener(
+                    new TextWatcher() {
 
-                @Override
-                public void beforeTextChanged(
-                        CharSequence s,
-                        int start,
-                        int count,
-                        int after) {
-                }
+                        @Override
+                        public void beforeTextChanged(
+                                CharSequence s,
+                                int start,
+                                int count,
+                                int after) {
+                        }
 
-                @Override
-                public void onTextChanged(
-                        CharSequence s,
-                        int start,
-                        int before,
-                        int count) {
+                        @Override
+                        public void onTextChanged(
+                                CharSequence s,
+                                int start,
+                                int before,
+                                int count) {
 
-                    searchQuery = s == null
-                            ? ""
-                            : s.toString().trim();
+                            searchQuery = s == null
+                                    ? ""
+                                    : s.toString().trim();
 
-                    afficherResultats();
-                }
+                            afficherResultats();
+                        }
 
-                @Override
-                public void afterTextChanged(Editable s) {
-                }
-            });
+                        @Override
+                        public void afterTextChanged(Editable s) {
+                        }
+                    }
+            );
         }
 
         if (filterGroup != null) {
             filterGroup.addOnButtonCheckedListener(
                     (group, checkedId, isChecked) -> {
-
                         if (isChecked) {
                             activeFilter = checkedId;
                             afficherResultats();
@@ -182,90 +202,63 @@ public class SessionEvaluationsFragment extends Fragment {
         }
     }
 
-    private void chargerEvaluation() {
-        teams.clear();
-        allItems.clear();
-        sheet = null;
+    private void observerDonnees() {
+        viewModel.getSheetState().observe(
+                getViewLifecycleOwner(),
+                state -> {
+                    if (state == null || !isAdded()) {
+                        return;
+                    }
 
-        EvaluationRepositoryMemory repository =
-                EvaluationRepositoryMemory.getInstance();
-
-        // Ne pas créer de feuille lors de la consultation
-        // si aucune évaluation n'existe.
-        if (sessionId >= 0 && repository.hasEvaluation(sessionId)) {
-
-            sheet = repository.getSheet(sessionId, sessionTitle);
-
-            if (sheet != null && sheet.getTeams() != null) {
-                teams.addAll(sheet.getTeams());
-            }
-        }
-
-        construireListeEtudiants();
-        actualiserStatistiques();
-        afficherResultats();
-    }
-
-    /**
-     * Détermine si l'évaluation d'une équipe est renseignée.
-     * Le statut est commun aux membres de l'équipe.
-     */
-    private boolean equipeEvaluee(EvaluationTeamMemory team) {
-        if (team == null
-                || team.getCriteria() == null
-                || team.getCriteria().isEmpty()) {
-            return false;
-        }
-
-        if (team.isEvaluationTerminee()) {
-            return true;
-        }
-
-        // Compatibilité avec les feuilles où le statut
-        // n'a pas encore été actualisé.
-        for (EvaluationCriterion criterion : team.getCriteria()) {
-            if (criterion != null && criterion.getScore() > 0) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private double getScoreSur20(EvaluationTeamMemory team) {
-        if (team == null || team.getMaxScore() <= 0) {
-            return 0;
-        }
-
-        return team.getTotalScore() * 20.0 / team.getMaxScore();
-    }
-
-    /**
-     * Construit une entrée par étudiant, en associant
-     * chaque étudiant à son équipe et à la note de celle-ci.
-     */
-    private void construireListeEtudiants() {
-        allItems.clear();
-
-        for (EvaluationTeamMemory team : teams) {
-            if (team == null || team.getStudents() == null) {
-                continue;
-            }
-
-            boolean evaluated = equipeEvaluee(team);
-            double score = getScoreSur20(team);
-
-            for (AttendanceRecordMemory student : team.getStudents()) {
-                if (student == null) {
-                    continue;
+                    construireListeEtudiants(state);
+                    actualiserStatistiques();
+                    afficherResultats();
                 }
+        );
+
+        viewModel.getOperationResult().observe(
+                getViewLifecycleOwner(),
+                result -> {
+                    if (result == null) {
+                        return;
+                    }
+
+                    viewModel.clearOperationResult();
+
+                    if (!result.isSuccess()) {
+                        afficherMessage(result.getMessage());
+
+                        if (result.shouldCloseScreen() && isAdded()) {
+                            getParentFragmentManager().popBackStack();
+                        }
+                    }
+                }
+        );
+    }
+
+    private void construireListeEtudiants(
+            EvaluationViewModel.SheetState state) {
+
+        allItems.clear();
+
+        for (EvaluationViewModel.EvaluationTeamState teamState
+                : state.getTeams()) {
+
+            boolean evaluated = teamState.isEvaluated();
+
+            double scoreSur20 = teamState.getScoreSur20();
+
+            EvaluationTeam team = teamState.getTeam();
+
+            for (EvaluationViewModel.StudentWithGroup student
+                    : teamState.getStudents()) {
 
                 allItems.add(
                         new EvaluationStudentAdapter.StudentEvaluationItem(
                                 student,
                                 team,
                                 evaluated,
-                                score
+                                scoreSur20
                         )
                 );
             }
@@ -274,10 +267,13 @@ public class SessionEvaluationsFragment extends Fragment {
 
     private void actualiserStatistiques() {
         int evaluatedCount = 0;
+
         double sum = 0;
         double best = -1;
 
-        for (EvaluationStudentAdapter.StudentEvaluationItem item : allItems) {
+        for (EvaluationStudentAdapter.StudentEvaluationItem item
+                : allItems) {
+
             if (!item.isEvaluated()) {
                 continue;
             }
@@ -286,6 +282,7 @@ public class SessionEvaluationsFragment extends Fragment {
 
             sum += score;
             best = Math.max(best, score);
+
             evaluatedCount++;
         }
 
@@ -322,21 +319,19 @@ public class SessionEvaluationsFragment extends Fragment {
         List<EvaluationStudentAdapter.StudentEvaluationItem> filtered =
                 new ArrayList<>();
 
-        for (EvaluationStudentAdapter.StudentEvaluationItem item : allItems) {
+        for (EvaluationStudentAdapter.StudentEvaluationItem item
+                : allItems) {
 
-            // Filtre : évaluations renseignées
             if (activeFilter == R.id.btnEvaluationResultEntered
                     && !item.isEvaluated()) {
                 continue;
             }
 
-            // Filtre : évaluations non renseignées
             if (activeFilter == R.id.btnEvaluationResultMissing
                     && item.isEvaluated()) {
                 continue;
             }
 
-            // Recherche simultanée par nom, matricule ou groupe
             if (!correspondRecherche(item, searchQuery)) {
                 continue;
             }
@@ -350,7 +345,9 @@ public class SessionEvaluationsFragment extends Fragment {
             int count = filtered.size();
 
             tvResultCount.setText(
-                    count + (count > 1 ? " étudiants" : " étudiant")
+                    count + (count > 1
+                            ? " étudiants"
+                            : " étudiant")
             );
         }
 
@@ -374,16 +371,23 @@ public class SessionEvaluationsFragment extends Fragment {
                         "Aucun étudiant n'est associé à une évaluation "
                                 + "pour cette séance."
                 );
-            } else if (activeFilter == R.id.btnEvaluationResultEntered) {
+
+            } else if (
+                    activeFilter == R.id.btnEvaluationResultEntered
+            ) {
                 tvEmptyMessage.setText(
                         "Aucune évaluation renseignée ne correspond "
                                 + "à votre recherche."
                 );
-            } else if (activeFilter == R.id.btnEvaluationResultMissing) {
+
+            } else if (
+                    activeFilter == R.id.btnEvaluationResultMissing
+            ) {
                 tvEmptyMessage.setText(
                         "Aucune évaluation non renseignée ne correspond "
                                 + "à votre recherche."
                 );
+
             } else {
                 tvEmptyMessage.setText(
                         "Aucun étudiant ne correspond à votre recherche."
@@ -400,22 +404,59 @@ public class SessionEvaluationsFragment extends Fragment {
             return true;
         }
 
-        AttendanceRecordMemory student = item.getStudent();
-        EvaluationTeamMemory team = item.getTeam();
+        EvaluationViewModel.StudentWithGroup entry =
+                item.getStudentEntry();
 
-        String normalized = normaliser(query);
+        String firstName = entry.getStudent().getFullName();
+        String arabicName = entry.getStudent().getFullNameArabic();
+        String matricule = entry.getStudent().getMatricule();
+        String groupName = entry.getGroupName();
+        String teamName = item.getTeam().getName();
 
-        return normaliser(student.getStudentName()).contains(normalized)
-                || normaliser(student.getArabicName()).contains(normalized)
-                || normaliser(student.getMatricule()).contains(normalized)
-                || normaliser(student.getGroupName()).contains(normalized)
-                || (team != null
-                && normaliser(team.getName()).contains(normalized));
+        String search = normaliser(query);
+
+        return normaliser(firstName).contains(search)
+                || normaliser(arabicName).contains(search)
+                || normaliser(matricule).contains(search)
+                || normaliser(groupName).contains(search)
+                || normaliser(teamName).contains(search);
     }
 
     private String normaliser(String value) {
         return value == null
                 ? ""
                 : value.toLowerCase(Locale.ROOT).trim();
+    }
+
+    private void afficherMessage(String message) {
+        if (!isAdded()
+                || message == null
+                || message.trim().isEmpty()) {
+            return;
+        }
+
+        Toast.makeText(
+                requireContext(),
+                message,
+                Toast.LENGTH_SHORT
+        ).show();
+    }
+
+    @Override
+    public void onDestroyView() {
+        tvAverage = null;
+        tvBestScore = null;
+        tvResultCount = null;
+        tvEmptyMessage = null;
+
+        searchInput = null;
+        filterGroup = null;
+
+        resultsRecyclerView = null;
+        emptyLayout = null;
+
+        adapter = null;
+
+        super.onDestroyView();
     }
 }

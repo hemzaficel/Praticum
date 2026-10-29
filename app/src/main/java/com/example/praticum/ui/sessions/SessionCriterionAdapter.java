@@ -1,4 +1,3 @@
-
 package com.example.praticum.ui.sessions;
 
 import android.text.Editable;
@@ -13,6 +12,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
+import com.example.praticum.data.entity.SessionCriterion;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
@@ -20,16 +20,19 @@ import java.util.List;
 import java.util.Locale;
 
 public class SessionCriterionAdapter
-        extends RecyclerView.Adapter<SessionCriterionAdapter.CriterionViewHolder> {
+        extends RecyclerView.Adapter<
+        SessionCriterionAdapter.CriterionViewHolder> {
 
     public interface OnCriteriaChangedListener {
         void onCriteriaChanged();
     }
 
     private final List<SessionCriterion> criteria = new ArrayList<>();
+
     private final OnCriteriaChangedListener listener;
 
-    public SessionCriterionAdapter(OnCriteriaChangedListener listener) {
+    public SessionCriterionAdapter(
+            OnCriteriaChangedListener listener) {
         this.listener = listener;
     }
 
@@ -40,6 +43,7 @@ public class SessionCriterionAdapter
             criteria.addAll(items);
         }
 
+        normaliserPositions();
         notifyDataSetChanged();
         notifyChanged();
     }
@@ -49,7 +53,15 @@ public class SessionCriterionAdapter
     }
 
     public void addCriterion() {
-        criteria.add(new SessionCriterion("", "", 0));
+        SessionCriterion criterion = new SessionCriterion(
+                0,
+                "",
+                0,
+                criteria.size()
+        );
+
+        criteria.add(criterion);
+
         notifyItemInserted(criteria.size() - 1);
         notifyChanged();
     }
@@ -60,8 +72,25 @@ public class SessionCriterionAdapter
         }
 
         int start = criteria.size();
-        criteria.addAll(items);
-        notifyItemRangeInserted(start, items.size());
+
+        for (SessionCriterion item : items) {
+            if (item == null) {
+                continue;
+            }
+
+            item.setPosition(criteria.size());
+            criteria.add(item);
+        }
+
+        normaliserPositions();
+
+        if (criteria.size() > start) {
+            notifyItemRangeInserted(
+                    start,
+                    criteria.size() - start
+            );
+        }
+
         notifyChanged();
     }
 
@@ -71,9 +100,25 @@ public class SessionCriterionAdapter
         }
 
         criteria.remove(position);
+
+        normaliserPositions();
+
         notifyItemRemoved(position);
-        notifyItemRangeChanged(position, criteria.size() - position);
+
+        if (position < criteria.size()) {
+            notifyItemRangeChanged(
+                    position,
+                    criteria.size() - position
+            );
+        }
+
         notifyChanged();
+    }
+
+    private void normaliserPositions() {
+        for (int i = 0; i < criteria.size(); i++) {
+            criteria.get(i).setPosition(i);
+        }
     }
 
     public double getTotalScore() {
@@ -113,9 +158,10 @@ public class SessionCriterionAdapter
             @NonNull CriterionViewHolder holder,
             int position) {
 
-        SessionCriterion criterion = criteria.get(position);
-
-        holder.bind(criterion, position + 1);
+        holder.bind(
+                criteria.get(position),
+                position + 1
+        );
     }
 
     @Override
@@ -144,52 +190,86 @@ public class SessionCriterionAdapter
         CriterionViewHolder(@NonNull View itemView) {
             super(itemView);
 
-            number = itemView.findViewById(R.id.tvCriterionNumber);
-            heading = itemView.findViewById(R.id.tvCriterionHeading);
-            deleteButton = itemView.findViewById(R.id.btnDeleteCriterion);
-
-            titleLayout = itemView.findViewById(R.id.tilCriterionTitle);
-            titleInput = itemView.findViewById(R.id.etCriterionTitle);
-
-            descriptionLayout =
-                    itemView.findViewById(R.id.tilCriterionDescription);
-            descriptionInput =
-                    itemView.findViewById(R.id.etCriterionDescription);
-
-            maxScoreLayout =
-                    itemView.findViewById(R.id.tilCriterionMaxScore);
-            maxScoreInput =
-                    itemView.findViewById(R.id.etCriterionMaxScore);
-        }
-
-        void bind(SessionCriterion criterion, int displayNumber) {
-            removeWatchers();
-
-            number.setText(String.valueOf(displayNumber));
-            heading.setText(
-                    criterion.getTitle() == null
-                            || criterion.getTitle().trim().isEmpty()
-                            ? "Nouveau critère"
-                            : criterion.getTitle()
+            number = itemView.findViewById(
+                    R.id.tvCriterionNumber
             );
 
-            titleInput.setText(criterion.getTitle());
-            descriptionInput.setText(criterion.getDescription());
+            heading = itemView.findViewById(
+                    R.id.tvCriterionHeading
+            );
+
+            deleteButton = itemView.findViewById(
+                    R.id.btnDeleteCriterion
+            );
+
+            titleLayout = itemView.findViewById(
+                    R.id.tilCriterionTitle
+            );
+
+            titleInput = itemView.findViewById(
+                    R.id.etCriterionTitle
+            );
+
+            descriptionLayout = itemView.findViewById(
+                    R.id.tilCriterionDescription
+            );
+
+            descriptionInput = itemView.findViewById(
+                    R.id.etCriterionDescription
+            );
+
+            maxScoreLayout = itemView.findViewById(
+                    R.id.tilCriterionMaxScore
+            );
+
+            maxScoreInput = itemView.findViewById(
+                    R.id.etCriterionMaxScore
+            );
+        }
+
+        void bind(
+                SessionCriterion criterion,
+                int displayNumber) {
+
+            removeWatchers();
+
+            number.setText(
+                    String.valueOf(displayNumber)
+            );
+
+            String title = criterion.getTitle();
+
+            heading.setText(
+                    title == null || title.trim().isEmpty()
+                            ? "Nouveau critère"
+                            : title
+            );
+
+            titleInput.setText(title);
+
+            descriptionInput.setText(
+                    criterion.getDescription()
+            );
 
             double score = criterion.getMaxScore();
+
             maxScoreInput.setText(
                     score == 0
                             ? ""
-                            : String.format(Locale.getDefault(), "%s",
-                                    score == Math.floor(score)
-                                            ? String.valueOf((int) score)
-                                            : String.valueOf(score))
+                            : String.format(
+                            Locale.getDefault(),
+                            "%s",
+                            score == Math.floor(score)
+                                    ? String.valueOf((int) score)
+                                    : String.valueOf(score)
+                    )
             );
 
             titleWatcher = new SimpleWatcher() {
                 @Override
                 public void afterTextChanged(Editable s) {
                     criterion.setTitle(s.toString());
+
                     heading.setText(
                             s.toString().trim().isEmpty()
                                     ? "Nouveau critère"
@@ -208,7 +288,9 @@ public class SessionCriterionAdapter
             scoreWatcher = new SimpleWatcher() {
                 @Override
                 public void afterTextChanged(Editable s) {
-                    String value = s.toString().trim().replace(',', '.');
+                    String value = s.toString()
+                            .trim()
+                            .replace(',', '.');
 
                     try {
                         double parsed = value.isEmpty()
@@ -220,6 +302,7 @@ public class SessionCriterionAdapter
                                         ? parsed
                                         : 0
                         );
+
                     } catch (NumberFormatException e) {
                         criterion.setMaxScore(0);
                     }
@@ -229,7 +312,11 @@ public class SessionCriterionAdapter
             };
 
             titleInput.addTextChangedListener(titleWatcher);
-            descriptionInput.addTextChangedListener(descriptionWatcher);
+
+            descriptionInput.addTextChangedListener(
+                    descriptionWatcher
+            );
+
             maxScoreInput.addTextChangedListener(scoreWatcher);
 
             deleteButton.setOnClickListener(v -> {
@@ -258,16 +345,23 @@ public class SessionCriterionAdapter
         }
     }
 
-    private abstract static class SimpleWatcher implements TextWatcher {
+    private abstract static class SimpleWatcher
+            implements TextWatcher {
 
         @Override
         public void beforeTextChanged(
-                CharSequence s, int start, int count, int after) {
+                CharSequence s,
+                int start,
+                int count,
+                int after) {
         }
 
         @Override
         public void onTextChanged(
-                CharSequence s, int start, int before, int count) {
+                CharSequence s,
+                int start,
+                int before,
+                int count) {
         }
     }
 }

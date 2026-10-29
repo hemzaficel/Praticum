@@ -3,6 +3,8 @@ package com.example.praticum.ui.attendance;
 import android.app.DatePickerDialog;
 import android.app.TimePickerDialog;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.view.LayoutInflater;
@@ -18,28 +20,87 @@ import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.praticum.R;
+import com.example.praticum.data.database.AppDatabase;
+import com.example.praticum.data.database.DatabaseProvider;
+import com.example.praticum.data.entity.AttendanceRecord;
+import com.example.praticum.data.entity.SessionGroup;
+import com.example.praticum.data.entity.Student;
+import com.example.praticum.data.entity.StudentGroup;
+import com.example.praticum.data.repository.AttendanceRecordRepository;
+import com.example.praticum.data.repository.SessionGroupRepository;
+import com.example.praticum.data.repository.StudentGroupRepository;
+import com.example.praticum.data.repository.StudentRepository;
+import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
-import com.google.android.material.progressindicator.LinearProgressIndicator;
 
 import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AttendanceSheetFragment extends Fragment {
 
-    private int sessionId;
+    private int sessionId = -1;
     private String sessionTitle;
 
-    private AttendanceSheet currentSheet;
-    private String selectedGroup;
+    private AppDatabase database;
 
-    private final List<AttendanceRecordMemory> allRecords = new ArrayList<>();
-    private final List<AttendanceRecordMemory> filteredRecords = new ArrayList<>();
+    private AttendanceRecordRepository attendanceRepository;
+    private SessionGroupRepository sessionGroupRepository;
+    private StudentGroupRepository studentGroupRepository;
+    private StudentRepository studentRepository;
+
+    private ExecutorService databaseExecutor;
+
+    private final Handler mainHandler =
+            new Handler(Looper.getMainLooper());
+
+    private StudentGroup selectedStudentGroup;
+    private SessionGroup currentSessionGroup;
+
+    private final List<StudentGroup> availableGroups =
+            new ArrayList<>();
+
+    private final List<AttendanceRow> allRecords =
+            new ArrayList<>();
+
+    private final List<AttendanceRow> filteredRecords =
+            new ArrayList<>();
+
+    /*
+     * Conservation temporaire des données des groupes visités.
+     * Les entités persistantes restent SessionGroup et AttendanceRecord.
+     */
+    private final Map<Integer, SessionGroup> sessionGroupsByGroupId =
+            new LinkedHashMap<>();
+
+    private final Map<Integer, List<AttendanceRow>> recordsByGroupId =
+            new LinkedHashMap<>();
+
+    /*
+     * Groupes dont les informations ou les statuts ont changé
+     * depuis l'ouverture de l'écran.
+     */
+    private final Set<Integer> dirtyGroupIds =
+            new LinkedHashSet<>();
+
+    private ArrayAdapter<String> groupAdapter;
 
     private int currentIndex = 0;
+    private int groupLoadGeneration = 0;
+
+    private boolean ignoreSearchChanges = false;
+    private boolean isSaving = false;
 
     // En-tête
     private View btnBack;
@@ -94,7 +155,7 @@ public class AttendanceSheetFragment extends Fragment {
     private android.widget.TextView tvSaveInfo;
 
     public AttendanceSheetFragment() {
-        // Constructeur obligatoire
+        // Constructeur obligatoire pour Android.
     }
 
     @Nullable
@@ -128,6 +189,34 @@ public class AttendanceSheetFragment extends Fragment {
             );
         }
 
+        database = DatabaseProvider.getDatabase(
+                requireContext()
+        );
+
+        attendanceRepository = new AttendanceRecordRepository(
+                database,
+                database.attendanceRecordDao()
+        );
+
+        sessionGroupRepository = new SessionGroupRepository(
+                database.sessionGroupDao()
+        );
+
+        studentGroupRepository = new StudentGroupRepository(
+                database.studentGroupDao()
+        );
+
+        studentRepository = new StudentRepository(
+                database,
+                database.studentDao()
+        );
+
+        if (databaseExecutor == null
+                || databaseExecutor.isShutdown()) {
+            databaseExecutor =
+                    Executors.newSingleThreadExecutor();
+        }
+
         bindViews(view);
         configureHeader();
         configureDateAndTimePickers();
@@ -136,113 +225,511 @@ public class AttendanceSheetFragment extends Fragment {
         configureNavigation();
         configureSaveButton();
 
-        // Sélectionner automatiquement le premier groupe.
-        String[] groups = AttendanceDataMemory.getGroups().toArray(new String[0]);
-
-        if (groups != null && groups.length > 0) {
-            selectedGroup = groups[0];
-            actGroup.setText(selectedGroup, false);
-            loadGroup(selectedGroup);
-        } else {
+        if (sessionId <= 0) {
             showNoStudents();
+
+            actGroup.setEnabled(false);
+            btnSave.setEnabled(false);
+
             Toast.makeText(
                     requireContext(),
-                    "Aucun groupe disponible.",
-                    Toast.LENGTH_SHORT
+                    "Séance invalide.",
+                    Toast.LENGTH_LONG
             ).show();
+
+            return;
         }
+
+        loadAvailableGroups();
     }
 
     private void bindViews(View view) {
-        btnBack = view.findViewById(R.id.btnAttendanceSheetBack);
-        tvSessionTitle =
-                view.findViewById(R.id.tvAttendanceSheetSessionTitle);
+        btnBack = view.findViewById(
+                R.id.btnAttendanceSheetBack
+        );
 
-        tilDate = view.findViewById(R.id.tilSessionDate);
-        tilStartTime =
-                view.findViewById(R.id.tilAttendanceStartTime);
-        tilEndTime =
-                view.findViewById(R.id.tilAttendanceEndTime);
-        tilRoom = view.findViewById(R.id.tilAttendanceRoom);
+        tvSessionTitle = view.findViewById(
+                R.id.tvAttendanceSheetSessionTitle
+        );
 
-        etDate = view.findViewById(R.id.etAttendanceDate);
-        etStartTime =
-                view.findViewById(R.id.etAttendanceStartTime);
-        etEndTime =
-                view.findViewById(R.id.etAttendanceEndTime);
-        etRoom = view.findViewById(R.id.etAttendanceRoom);
+        tilDate = view.findViewById(
+                R.id.tilSessionDate
+        );
 
-        actGroup = view.findViewById(R.id.actAttendanceGroup);
+        tilStartTime = view.findViewById(
+                R.id.tilAttendanceStartTime
+        );
 
-        tvGroupStudentCount =
-                view.findViewById(R.id.tvAttendanceGroupStudentCount);
-        tvProgress =
-                view.findViewById(R.id.tvAttendanceSheetProgress);
-        progressIndicator =
-                view.findViewById(R.id.progressAttendanceSheet);
-        tvRemaining =
-                view.findViewById(R.id.tvAttendanceSheetRemaining);
+        tilEndTime = view.findViewById(
+                R.id.tilAttendanceEndTime
+        );
 
-        tvPresentCount =
-                view.findViewById(R.id.tvAttendanceSheetPresentCount);
-        tvAbsentCount =
-                view.findViewById(R.id.tvAttendanceSheetAbsentCount);
-        tvLateCount =
-                view.findViewById(R.id.tvAttendanceSheetLateCount);
+        tilRoom = view.findViewById(
+                R.id.tilAttendanceRoom
+        );
 
-        etStudentSearch =
-                view.findViewById(R.id.etAttendanceStudentSearch);
-        tvStudentPosition =
-                view.findViewById(R.id.tvAttendanceSheetStudentPosition);
+        etDate = view.findViewById(
+                R.id.etAttendanceDate
+        );
 
-        cardCurrentStudent =
-                view.findViewById(R.id.cardAttendanceCurrentStudent);
-        tvInitials =
-                view.findViewById(R.id.tvAttendanceStudentInitials);
-        tvFullName =
-                view.findViewById(R.id.tvAttendanceStudentFullName);
-        tvArabicName =
-                view.findViewById(R.id.tvAttendanceStudentNameArabic);
-        tvStudentGroup =
-                view.findViewById(R.id.tvAttendanceStudentGroup);
-        tvMatricule =
-                view.findViewById(R.id.tvAttendanceStudentMatricule);
-        tvGroupOrder =
-                view.findViewById(R.id.tvAttendanceStudentGroupOrder);
+        etStartTime = view.findViewById(
+                R.id.etAttendanceStartTime
+        );
 
-        rgStatus =
-                view.findViewById(R.id.rgAttendanceStudentStatus);
-        rbPresent =
-                view.findViewById(R.id.rbAttendancePresent);
-        rbAbsent =
-                view.findViewById(R.id.rbAttendanceAbsent);
-        rbLate =
-                view.findViewById(R.id.rbAttendanceLate);
-        tvUnmarked =
-                view.findViewById(R.id.tvAttendanceStudentUnmarked);
+        etEndTime = view.findViewById(
+                R.id.etAttendanceEndTime
+        );
 
-        btnPrevious =
-                view.findViewById(R.id.btnAttendancePreviousStudent);
-        btnNext =
-                view.findViewById(R.id.btnAttendanceNextStudent);
-        btnSave =
-                view.findViewById(R.id.btnSaveAttendanceSheet);
-        tvSaveInfo =
-                view.findViewById(R.id.tvAttendanceSheetSaveInfo);
+        etRoom = view.findViewById(
+                R.id.etAttendanceRoom
+        );
+
+        actGroup = view.findViewById(
+                R.id.actAttendanceGroup
+        );
+
+        tvGroupStudentCount = view.findViewById(
+                R.id.tvAttendanceGroupStudentCount
+        );
+
+        tvProgress = view.findViewById(
+                R.id.tvAttendanceSheetProgress
+        );
+
+        progressIndicator = view.findViewById(
+                R.id.progressAttendanceSheet
+        );
+
+        tvRemaining = view.findViewById(
+                R.id.tvAttendanceSheetRemaining
+        );
+
+        tvPresentCount = view.findViewById(
+                R.id.tvAttendanceSheetPresentCount
+        );
+
+        tvAbsentCount = view.findViewById(
+                R.id.tvAttendanceSheetAbsentCount
+        );
+
+        tvLateCount = view.findViewById(
+                R.id.tvAttendanceSheetLateCount
+        );
+
+        etStudentSearch = view.findViewById(
+                R.id.etAttendanceStudentSearch
+        );
+
+        tvStudentPosition = view.findViewById(
+                R.id.tvAttendanceSheetStudentPosition
+        );
+
+        cardCurrentStudent = view.findViewById(
+                R.id.cardAttendanceCurrentStudent
+        );
+
+        tvInitials = view.findViewById(
+                R.id.tvAttendanceStudentInitials
+        );
+
+        tvFullName = view.findViewById(
+                R.id.tvAttendanceStudentFullName
+        );
+
+        tvArabicName = view.findViewById(
+                R.id.tvAttendanceStudentNameArabic
+        );
+
+        tvStudentGroup = view.findViewById(
+                R.id.tvAttendanceStudentGroup
+        );
+
+        tvMatricule = view.findViewById(
+                R.id.tvAttendanceStudentMatricule
+        );
+
+        tvGroupOrder = view.findViewById(
+                R.id.tvAttendanceStudentGroupOrder
+        );
+
+        rgStatus = view.findViewById(
+                R.id.rgAttendanceStudentStatus
+        );
+
+        rbPresent = view.findViewById(
+                R.id.rbAttendancePresent
+        );
+
+        rbAbsent = view.findViewById(
+                R.id.rbAttendanceAbsent
+        );
+
+        rbLate = view.findViewById(
+                R.id.rbAttendanceLate
+        );
+
+        tvUnmarked = view.findViewById(
+                R.id.tvAttendanceStudentUnmarked
+        );
+
+        btnPrevious = view.findViewById(
+                R.id.btnAttendancePreviousStudent
+        );
+
+        btnNext = view.findViewById(
+                R.id.btnAttendanceNextStudent
+        );
+
+        btnSave = view.findViewById(
+                R.id.btnSaveAttendanceSheet
+        );
+
+        tvSaveInfo = view.findViewById(
+                R.id.tvAttendanceSheetSaveInfo
+        );
     }
 
     private void configureHeader() {
         tvSessionTitle.setText(
-                sessionTitle != null && !sessionTitle.trim().isEmpty()
+                sessionTitle != null
+                        && !sessionTitle.trim().isEmpty()
                         ? sessionTitle
                         : "Feuille de présence"
         );
 
-        btnBack.setOnClickListener(v -> {
-            requireActivity()
-                    .getSupportFragmentManager()
-                    .popBackStack();
+        btnBack.setOnClickListener(v ->
+                requireActivity()
+                        .getSupportFragmentManager()
+                        .popBackStack()
+        );
+    }
+
+    // ---------------------------------------------------------
+    // Chargement des groupes depuis Room
+    // ---------------------------------------------------------
+
+    private void loadAvailableGroups() {
+        databaseExecutor.execute(() -> {
+            try {
+                List<StudentGroup> groups =
+                        studentGroupRepository.getAll();
+
+                mainHandler.post(() -> {
+                    if (!isViewReady()) {
+                        return;
+                    }
+
+                    availableGroups.clear();
+
+                    if (groups != null) {
+                        availableGroups.addAll(groups);
+                    }
+
+                    List<String> groupNames =
+                            new ArrayList<>();
+
+                    for (StudentGroup group : availableGroups) {
+                        groupNames.add(safe(group.getName()));
+                    }
+
+                    groupAdapter = new ArrayAdapter<>(
+                            requireContext(),
+                            android.R.layout
+                                    .simple_dropdown_item_1line,
+                            groupNames
+                    );
+
+                    actGroup.setAdapter(groupAdapter);
+
+                    if (availableGroups.isEmpty()) {
+                        showNoStudents();
+
+                        actGroup.setEnabled(false);
+                        btnSave.setEnabled(false);
+
+                        Toast.makeText(
+                                requireContext(),
+                                "Aucun groupe disponible.",
+                                Toast.LENGTH_LONG
+                        ).show();
+
+                        return;
+                    }
+
+                    actGroup.setEnabled(true);
+
+                    StudentGroup firstGroup =
+                            availableGroups.get(0);
+
+                    actGroup.setText(
+                            safe(firstGroup.getName()),
+                            false
+                    );
+
+                    loadGroup(firstGroup);
+                });
+
+            } catch (Exception exception) {
+                mainHandler.post(() -> {
+                    if (!isViewReady()) {
+                        return;
+                    }
+
+                    showNoStudents();
+
+                    actGroup.setEnabled(false);
+                    btnSave.setEnabled(false);
+
+                    Toast.makeText(
+                            requireContext(),
+                            errorMessage(exception),
+                            Toast.LENGTH_LONG
+                    ).show();
+                });
+            }
         });
+    }
+
+    private void configureGroupSelector() {
+        actGroup.setOnItemClickListener(
+                (parent, itemView, position, id) -> {
+
+                    if (position < 0
+                            || position >= availableGroups.size()) {
+                        return;
+                    }
+
+                    StudentGroup group =
+                            availableGroups.get(position);
+
+                    if (selectedStudentGroup != null
+                            && selectedStudentGroup.getId()
+                            == group.getId()) {
+                        return;
+                    }
+
+                    loadGroup(group);
+                }
+        );
+    }
+
+    private void loadGroup(StudentGroup group) {
+        if (group == null) {
+            return;
+        }
+
+        saveCurrentGroupFields();
+
+        selectedStudentGroup = group;
+
+        actGroup.setText(
+                safe(group.getName()),
+                false
+        );
+
+        int groupId = group.getId();
+        int requestId = ++groupLoadGeneration;
+
+        /*
+         * Si le groupe a déjà été chargé, on réutilise son état
+         * temporaire sans relire les données.
+         */
+        if (sessionGroupsByGroupId.containsKey(groupId)
+                && recordsByGroupId.containsKey(groupId)) {
+
+            displayGroup(
+                    group,
+                    sessionGroupsByGroupId.get(groupId),
+                    recordsByGroupId.get(groupId)
+            );
+
+            return;
+        }
+
+        actGroup.setEnabled(false);
+        btnSave.setEnabled(false);
+
+        cardCurrentStudent.setVisibility(View.GONE);
+        tvStudentPosition.setText("Chargement des étudiants…");
+
+        databaseExecutor.execute(() -> {
+            try {
+                SessionGroup sessionGroup =
+                        sessionGroupRepository.getBySessionAndGroup(
+                                sessionId,
+                                groupId
+                        );
+
+                List<Student> students =
+                        studentRepository.getByGroupId(groupId);
+
+                List<AttendanceRecord> savedRecords =
+                        sessionGroup != null
+                                && sessionGroup.getId() > 0
+                                ? attendanceRepository
+                                .getBySessionGroupId(
+                                        sessionGroup.getId()
+                                )
+                                : Collections.emptyList();
+
+                Map<String, String> savedStatuses =
+                        new HashMap<>();
+
+                for (AttendanceRecord record : savedRecords) {
+                    savedStatuses.put(
+                            record.getStudentId(),
+                            record.getStatus()
+                    );
+                }
+
+                List<AttendanceRow> rows =
+                        new ArrayList<>();
+
+                if (students != null) {
+                    for (Student student : students) {
+                        String status = savedStatuses.get(
+                                student.getStudentId()
+                        );
+
+                        rows.add(
+                                new AttendanceRow(student, status)
+                        );
+                    }
+                }
+
+                if (sessionGroup == null) {
+                    sessionGroup = new SessionGroup(
+                            sessionId,
+                            groupId
+                    );
+                }
+
+                SessionGroup loadedSessionGroup = sessionGroup;
+
+                mainHandler.post(() -> {
+                    if (!isViewReady()
+                            || requestId != groupLoadGeneration) {
+                        return;
+                    }
+
+                    sessionGroupsByGroupId.put(
+                            groupId,
+                            loadedSessionGroup
+                    );
+
+                    recordsByGroupId.put(
+                            groupId,
+                            rows
+                    );
+
+                    displayGroup(
+                            group,
+                            loadedSessionGroup,
+                            rows
+                    );
+                });
+
+            } catch (Exception exception) {
+                mainHandler.post(() -> {
+                    if (!isViewReady()
+                            || requestId != groupLoadGeneration) {
+                        return;
+                    }
+
+                    actGroup.setEnabled(true);
+                    btnSave.setEnabled(false);
+
+                    Toast.makeText(
+                            requireContext(),
+                            errorMessage(exception),
+                            Toast.LENGTH_LONG
+                    ).show();
+                });
+            }
+        });
+    }
+
+    private void displayGroup(
+            StudentGroup group,
+            SessionGroup sessionGroup,
+            List<AttendanceRow> rows) {
+
+        selectedStudentGroup = group;
+        currentSessionGroup = sessionGroup;
+
+        sessionGroupsByGroupId.put(
+                group.getId(),
+                sessionGroup
+        );
+
+        recordsByGroupId.put(
+                group.getId(),
+                rows
+        );
+
+        allRecords.clear();
+        allRecords.addAll(rows);
+
+        filteredRecords.clear();
+        filteredRecords.addAll(allRecords);
+
+        currentIndex = 0;
+
+        ignoreSearchChanges = true;
+        etStudentSearch.setText("");
+        ignoreSearchChanges = false;
+
+        actGroup.setText(
+                safe(group.getName()),
+                false
+        );
+
+        actGroup.setEnabled(true);
+        btnSave.setEnabled(true);
+
+        populateGroupFields();
+        renderCurrentStudent();
+        updateCounters();
+        updateNavigationButtons();
+    }
+
+    private void populateGroupFields() {
+        if (currentSessionGroup == null) {
+            return;
+        }
+
+        etDate.setText(
+                toDisplayDate(
+                        currentSessionGroup.getSessionDate()
+                )
+        );
+
+        etStartTime.setText(
+                safe(currentSessionGroup.getStartTime())
+        );
+
+        etEndTime.setText(
+                safe(currentSessionGroup.getEndTime())
+        );
+
+        etRoom.setText(
+                safe(currentSessionGroup.getRoom())
+        );
+
+        actGroup.setText(
+                selectedStudentGroup == null
+                        ? ""
+                        : safe(selectedStudentGroup.getName()),
+                false
+        );
+
+        tvGroupStudentCount.setText(
+                String.format(
+                        Locale.getDefault(),
+                        "%d étudiants",
+                        allRecords.size()
+                )
+        );
     }
 
     // ---------------------------------------------------------
@@ -250,19 +737,26 @@ public class AttendanceSheetFragment extends Fragment {
     // ---------------------------------------------------------
 
     private void configureDateAndTimePickers() {
-        View.OnClickListener dateClick = v -> openDatePicker();
+        etDate.setOnClickListener(
+                v -> openDatePicker()
+        );
 
-        etDate.setOnClickListener(dateClick);
-        tilDate.setEndIconOnClickListener(v -> openDatePicker());
+        tilDate.setEndIconOnClickListener(
+                v -> openDatePicker()
+        );
 
-        View.OnClickListener startClick = v -> openTimePicker(etStartTime);
-        etStartTime.setOnClickListener(startClick);
+        etStartTime.setOnClickListener(
+                v -> openTimePicker(etStartTime)
+        );
+
         tilStartTime.setEndIconOnClickListener(
                 v -> openTimePicker(etStartTime)
         );
 
-        View.OnClickListener endClick = v -> openTimePicker(etEndTime);
-        etEndTime.setOnClickListener(endClick);
+        etEndTime.setOnClickListener(
+                v -> openTimePicker(etEndTime)
+        );
+
         tilEndTime.setEndIconOnClickListener(
                 v -> openTimePicker(etEndTime)
         );
@@ -276,6 +770,7 @@ public class AttendanceSheetFragment extends Fragment {
         if (!currentDate.isEmpty()) {
             try {
                 String[] parts = currentDate.split("/");
+
                 if (parts.length == 3) {
                     calendar.set(
                             Integer.parseInt(parts[2]),
@@ -284,13 +779,14 @@ public class AttendanceSheetFragment extends Fragment {
                     );
                 }
             } catch (NumberFormatException ignored) {
-                // Utiliser la date du jour si le texte est invalide.
+                // Utiliser la date actuelle.
             }
         }
 
         DatePickerDialog dialog = new DatePickerDialog(
                 requireContext(),
                 (picker, year, month, day) -> {
+
                     String value = String.format(
                             Locale.getDefault(),
                             "%02d/%02d/%04d",
@@ -320,8 +816,10 @@ public class AttendanceSheetFragment extends Fragment {
         if (!value.isEmpty()) {
             try {
                 String[] parts = value.split(":");
+
                 hour = Integer.parseInt(parts[0]);
                 minute = Integer.parseInt(parts[1]);
+
             } catch (Exception ignored) {
                 // Conserver l'heure actuelle.
             }
@@ -330,6 +828,7 @@ public class AttendanceSheetFragment extends Fragment {
         TimePickerDialog dialog = new TimePickerDialog(
                 requireContext(),
                 (picker, selectedHour, selectedMinute) -> {
+
                     String time = String.format(
                             Locale.getDefault(),
                             "%02d:%02d",
@@ -347,101 +846,82 @@ public class AttendanceSheetFragment extends Fragment {
         dialog.show();
     }
 
-    // ---------------------------------------------------------
-    // Groupes
-    // ---------------------------------------------------------
+    /*
+     * L'interface affiche dd/MM/yyyy.
+     * Les dates normalisées en base sont conservées sous yyyy-MM-dd.
+     */
 
-    private void configureGroupSelector() {
-        String[] groups = AttendanceDataMemory.getGroups().toArray(new String[0]);
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                groups
-        );
-
-        actGroup.setAdapter(adapter);
-
-        actGroup.setOnItemClickListener((parent, itemView, position, id) -> {
-            String group = String.valueOf(parent.getItemAtPosition(position));
-
-            if (!group.equals(selectedGroup)) {
-                saveCurrentSheetFields();
-                selectedGroup = group;
-                loadGroup(group);
-            }
-        });
-    }
-
-    private void loadGroup(String groupName) {
-        currentSheet = AttendanceRepositoryMemory
-                .getInstance()
-                .getSheet(sessionId, groupName);
-
-        allRecords.clear();
-        filteredRecords.clear();
-
-        if (currentSheet.getRecords() != null) {
-            allRecords.addAll(currentSheet.getRecords());
+    private String toDisplayDate(String storedDate) {
+        if (storedDate == null || storedDate.trim().isEmpty()) {
+            return "";
         }
 
-        filteredRecords.addAll(allRecords);
-        currentIndex = 0;
+        String[] parts = storedDate.split("-");
 
-        populateSheetFields();
-        renderCurrentStudent();
-        updateCounters();
-        updateNavigationButtons();
-    }
-
-    private void populateSheetFields() {
-        if (currentSheet == null) {
-            return;
+        if (parts.length == 3 && parts[0].length() == 4) {
+            return parts[2]
+                    + "/"
+                    + parts[1]
+                    + "/"
+                    + parts[0];
         }
 
-        etDate.setText(currentSheet.getDate());
-        etStartTime.setText(currentSheet.getStartTime());
-        etEndTime.setText(currentSheet.getEndTime());
-        etRoom.setText(currentSheet.getRoom());
+        return storedDate;
+    }
 
-        actGroup.setText(selectedGroup, false);
-        tvGroupStudentCount.setText(
-                String.format(
-                        Locale.getDefault(),
-                        "%d étudiants",
-                        allRecords.size()
-                )
-        );
+    private String toStorageDate(String displayDate) {
+        if (displayDate == null || displayDate.trim().isEmpty()) {
+            return "";
+        }
+
+        String[] parts = displayDate.split("/");
+
+        if (parts.length == 3 && parts[2].length() == 4) {
+            return parts[2]
+                    + "-"
+                    + parts[1]
+                    + "-"
+                    + parts[0];
+        }
+
+        return displayDate;
     }
 
     // ---------------------------------------------------------
-    // Recherche d'étudiants
+    // Recherche
     // ---------------------------------------------------------
 
     private void configureStudentSearch() {
-        etStudentSearch.addTextChangedListener(new TextWatcher() {
-            @Override
-            public void beforeTextChanged(
-                    CharSequence s,
-                    int start,
-                    int count,
-                    int after) {
-            }
+        etStudentSearch.addTextChangedListener(
+                new TextWatcher() {
 
-            @Override
-            public void onTextChanged(
-                    CharSequence s,
-                    int start,
-                    int before,
-                    int count) {
+                    @Override
+                    public void beforeTextChanged(
+                            CharSequence s,
+                            int start,
+                            int count,
+                            int after) {
+                    }
 
-                filterStudents(s.toString());
-            }
+                    @Override
+                    public void onTextChanged(
+                            CharSequence s,
+                            int start,
+                            int before,
+                            int count) {
 
-            @Override
-            public void afterTextChanged(Editable s) {
-            }
-        });
+                        if (!ignoreSearchChanges) {
+                            filterStudents(
+                                    s == null ? "" : s.toString()
+                            );
+                        }
+                    }
+
+                    @Override
+                    public void afterTextChanged(Editable s) {
+                    }
+                }
+        );
     }
 
     private void filterStudents(String query) {
@@ -451,20 +931,23 @@ public class AttendanceSheetFragment extends Fragment {
                 ? ""
                 : query.trim().toLowerCase(Locale.ROOT);
 
-        for (AttendanceRecordMemory record : allRecords) {
+        for (AttendanceRow row : allRecords) {
+            Student student = row.student;
+
+            String fullName = safe(student.getFullName());
+            String arabicName = safe(student.getFullNameArabic());
+            String matricule = safe(student.getMatricule());
+
             boolean matches =
                     normalizedQuery.isEmpty()
-                    || safe(record.getStudentName())
-                            .toLowerCase(Locale.ROOT)
+                            || fullName.toLowerCase(Locale.ROOT)
                             .contains(normalizedQuery)
-                    || safe(record.getMatricule())
-                            .toLowerCase(Locale.ROOT)
+                            || matricule.toLowerCase(Locale.ROOT)
                             .contains(normalizedQuery)
-                    || safe(record.getArabicName())
-                            .contains(normalizedQuery);
+                            || arabicName.contains(normalizedQuery);
 
             if (matches) {
-                filteredRecords.add(record);
+                filteredRecords.add(row);
             }
         }
 
@@ -475,7 +958,7 @@ public class AttendanceSheetFragment extends Fragment {
     }
 
     // ---------------------------------------------------------
-    // Étudiant courant et statut
+    // Affichage de l'étudiant et statut
     // ---------------------------------------------------------
 
     private void renderCurrentStudent() {
@@ -486,17 +969,28 @@ public class AttendanceSheetFragment extends Fragment {
 
         cardCurrentStudent.setVisibility(View.VISIBLE);
 
-        AttendanceRecordMemory record = filteredRecords.get(currentIndex);
+        AttendanceRow row = filteredRecords.get(currentIndex);
+        Student student = row.student;
 
-        String fullName = safe(record.getStudentName());
+        String fullName = safe(student.getFullName());
 
         tvFullName.setText(fullName);
-        tvArabicName.setText(safe(record.getArabicName()));
-        tvStudentGroup.setText(safe(record.getGroupName()));
-        tvMatricule.setText(safe(record.getMatricule()));
+        tvArabicName.setText(
+                safe(student.getFullNameArabic())
+        );
+
+        tvStudentGroup.setText(
+                selectedStudentGroup == null
+                        ? ""
+                        : safe(selectedStudentGroup.getName())
+        );
+
+        tvMatricule.setText(
+                safe(student.getMatricule())
+        );
 
         tvGroupOrder.setText(
-                String.valueOf(record.getGroupOrder())
+                String.valueOf(student.getGroupOrder())
         );
 
         tvInitials.setText(getInitials(fullName));
@@ -510,45 +1004,59 @@ public class AttendanceSheetFragment extends Fragment {
                 )
         );
 
-        // Éviter de modifier le statut pendant le rafraîchissement.
         rgStatus.setOnCheckedChangeListener(null);
 
-        String status = record.getStatus();
-
-        if (AttendanceRecordMemory.PRESENT.equals(status)) {
+        if (AttendanceRecord.PRESENT.equals(row.status)) {
             rbPresent.setChecked(true);
-        } else if (AttendanceRecordMemory.ABSENT.equals(status)) {
+
+        } else if (AttendanceRecord.ABSENT.equals(row.status)) {
             rbAbsent.setChecked(true);
-        } else if (AttendanceRecordMemory.LATE.equals(status)) {
+
+        } else if (AttendanceRecord.LATE.equals(row.status)) {
             rbLate.setChecked(true);
+
         } else {
             rgStatus.clearCheck();
         }
 
         tvUnmarked.setVisibility(
-                status == null
-                        || AttendanceRecordMemory.UNMARKED.equals(status)
+                row.isUnmarked()
                         ? View.VISIBLE
                         : View.GONE
         );
 
-        rgStatus.setOnCheckedChangeListener(this::onStatusChanged);
+        rgStatus.setOnCheckedChangeListener(
+                this::onStatusChanged
+        );
     }
 
-    private void onStatusChanged(RadioGroup group, int checkedId) {
-        if (filteredRecords.isEmpty()) {
+    private void onStatusChanged(
+            RadioGroup group,
+            int checkedId) {
+
+        if (filteredRecords.isEmpty()
+                || selectedStudentGroup == null) {
             return;
         }
 
-        AttendanceRecordMemory record = filteredRecords.get(currentIndex);
+        AttendanceRow row = filteredRecords.get(currentIndex);
 
         if (checkedId == R.id.rbAttendancePresent) {
-            record.setStatus(AttendanceRecordMemory.PRESENT);
+            row.status = AttendanceRecord.PRESENT;
+
         } else if (checkedId == R.id.rbAttendanceAbsent) {
-            record.setStatus(AttendanceRecordMemory.ABSENT);
+            row.status = AttendanceRecord.ABSENT;
+
         } else if (checkedId == R.id.rbAttendanceLate) {
-            record.setStatus(AttendanceRecordMemory.LATE);
+            row.status = AttendanceRecord.LATE;
+
+        } else {
+            return;
         }
+
+        dirtyGroupIds.add(
+                selectedStudentGroup.getId()
+        );
 
         tvUnmarked.setVisibility(View.GONE);
 
@@ -557,7 +1065,11 @@ public class AttendanceSheetFragment extends Fragment {
 
     private void showNoStudents() {
         cardCurrentStudent.setVisibility(View.GONE);
-        tvStudentPosition.setText("Aucun étudiant trouvé");
+
+        tvStudentPosition.setText(
+                "Aucun étudiant trouvé"
+        );
+
         tvGroupStudentCount.setText(
                 String.format(
                         Locale.getDefault(),
@@ -571,13 +1083,14 @@ public class AttendanceSheetFragment extends Fragment {
     }
 
     // ---------------------------------------------------------
-    // Navigation
+    // Navigation entre étudiants
     // ---------------------------------------------------------
 
     private void configureNavigation() {
         btnPrevious.setOnClickListener(v -> {
             if (currentIndex > 0) {
                 currentIndex--;
+
                 renderCurrentStudent();
                 updateNavigationButtons();
             }
@@ -586,6 +1099,7 @@ public class AttendanceSheetFragment extends Fragment {
         btnNext.setOnClickListener(v -> {
             if (currentIndex < filteredRecords.size() - 1) {
                 currentIndex++;
+
                 renderCurrentStudent();
                 updateNavigationButtons();
             }
@@ -595,9 +1109,13 @@ public class AttendanceSheetFragment extends Fragment {
     private void updateNavigationButtons() {
         boolean hasStudents = !filteredRecords.isEmpty();
 
-        btnPrevious.setEnabled(hasStudents && currentIndex > 0);
+        btnPrevious.setEnabled(
+                hasStudents && currentIndex > 0
+        );
+
         btnNext.setEnabled(
-                hasStudents && currentIndex < filteredRecords.size() - 1
+                hasStudents
+                        && currentIndex < filteredRecords.size() - 1
         );
 
         btnPrevious.setAlpha(
@@ -605,7 +1123,8 @@ public class AttendanceSheetFragment extends Fragment {
         );
 
         btnNext.setAlpha(
-                hasStudents && currentIndex < filteredRecords.size() - 1
+                hasStudents
+                        && currentIndex < filteredRecords.size() - 1
                         ? 1f
                         : 0.4f
         );
@@ -621,16 +1140,16 @@ public class AttendanceSheetFragment extends Fragment {
         int late = 0;
         int marked = 0;
 
-        for (AttendanceRecordMemory record : allRecords) {
-            String status = record.getStatus();
-
-            if (AttendanceRecordMemory.PRESENT.equals(status)) {
+        for (AttendanceRow row : allRecords) {
+            if (AttendanceRecord.PRESENT.equals(row.status)) {
                 present++;
                 marked++;
-            } else if (AttendanceRecordMemory.ABSENT.equals(status)) {
+
+            } else if (AttendanceRecord.ABSENT.equals(row.status)) {
                 absent++;
                 marked++;
-            } else if (AttendanceRecordMemory.LATE.equals(status)) {
+
+            } else if (AttendanceRecord.LATE.equals(row.status)) {
                 late++;
                 marked++;
             }
@@ -662,7 +1181,8 @@ public class AttendanceSheetFragment extends Fragment {
         tvRemaining.setText(
                 remaining == 1
                         ? "1 étudiant reste à renseigner"
-                        : remaining + " étudiants restent à renseigner"
+                        : remaining
+                        + " étudiants restent à renseigner"
         );
 
         tvSaveInfo.setText(
@@ -673,20 +1193,29 @@ public class AttendanceSheetFragment extends Fragment {
     }
 
     // ---------------------------------------------------------
-    // Enregistrement temporaire
+    // Enregistrement Room
     // ---------------------------------------------------------
 
     private void configureSaveButton() {
-        btnSave.setOnClickListener(v -> saveAttendanceSheet());
+        btnSave.setOnClickListener(
+                v -> saveAttendanceSheet()
+        );
     }
 
     private void saveAttendanceSheet() {
-        if (currentSheet == null) {
+        if (isSaving) {
+            return;
+        }
+
+        if (currentSessionGroup == null
+                || selectedStudentGroup == null) {
+
             Toast.makeText(
                     requireContext(),
                     "Aucun groupe sélectionné.",
                     Toast.LENGTH_SHORT
             ).show();
+
             return;
         }
 
@@ -705,6 +1234,7 @@ public class AttendanceSheetFragment extends Fragment {
                     "Renseignez la date, les heures et la salle.",
                     Toast.LENGTH_LONG
             ).show();
+
             return;
         }
 
@@ -717,6 +1247,7 @@ public class AttendanceSheetFragment extends Fragment {
                     "Format d'heure invalide.",
                     Toast.LENGTH_SHORT
             ).show();
+
             return;
         }
 
@@ -724,41 +1255,225 @@ public class AttendanceSheetFragment extends Fragment {
             tilEndTime.setError(
                     "L'heure de fin doit être après l'heure de début."
             );
+
             return;
         }
 
         tilEndTime.setError(null);
 
-        saveCurrentSheetFields();
+        saveCurrentGroupFields();
 
-        AttendanceRepositoryMemory
-                .getInstance()
-                .saveSheet(currentSheet);
+        /*
+         * Le groupe actuellement affiché doit toujours être enregistré.
+         */
+        dirtyGroupIds.add(selectedStudentGroup.getId());
 
-        Toast.makeText(
-                requireContext(),
-                "Feuille de présence enregistrée.",
-                Toast.LENGTH_SHORT
-        ).show();
+        List<Integer> groupIdsToSave =
+                new ArrayList<>(dirtyGroupIds);
 
-        // Retour aux détails de la session.
-        requireActivity()
-                .getSupportFragmentManager()
-                .popBackStack();
+        List<SessionGroup> groupsToSave =
+                new ArrayList<>();
 
-        updateCounters();
+        for (Integer groupId : groupIdsToSave) {
+            SessionGroup sessionGroup =
+                    sessionGroupsByGroupId.get(groupId);
+
+            if (sessionGroup != null) {
+                groupsToSave.add(sessionGroup);
+            }
+        }
+
+        isSaving = true;
+
+        btnSave.setEnabled(false);
+        actGroup.setEnabled(false);
+
+        databaseExecutor.execute(() -> {
+            try {
+                for (SessionGroup sessionGroup : groupsToSave) {
+                    saveGroupToDatabase(sessionGroup);
+                }
+
+                mainHandler.post(() -> {
+                    if (!isViewReady()) {
+                        return;
+                    }
+
+                    dirtyGroupIds.removeAll(groupIdsToSave);
+
+                    isSaving = false;
+
+                    Toast.makeText(
+                            requireContext(),
+                            "Feuille de présence enregistrée.",
+                            Toast.LENGTH_SHORT
+                    ).show();
+
+                    requireActivity()
+                            .getSupportFragmentManager()
+                            .popBackStack();
+                });
+
+            } catch (Exception exception) {
+                mainHandler.post(() -> {
+                    if (!isViewReady()) {
+                        return;
+                    }
+
+                    isSaving = false;
+
+                    btnSave.setEnabled(true);
+                    actGroup.setEnabled(true);
+
+                    Toast.makeText(
+                            requireContext(),
+                            errorMessage(exception),
+                            Toast.LENGTH_LONG
+                    ).show();
+                });
+            }
+        });
     }
 
-    private void saveCurrentSheetFields() {
-        if (currentSheet == null) {
+    private void saveGroupToDatabase(
+            SessionGroup sessionGroup) {
+
+        int groupId = sessionGroup.getGroupId();
+
+        /*
+         * Créer l'association séance-groupe si elle n'existe pas.
+         * Sinon, mettre à jour ses informations.
+         */
+        if (sessionGroup.getId() <= 0) {
+            SessionGroup existing =
+                    sessionGroupRepository.getBySessionAndGroup(
+                            sessionGroup.getSessionId(),
+                            groupId
+                    );
+
+            if (existing == null) {
+                long generatedId =
+                        sessionGroupRepository.insert(
+                                sessionGroup
+                        );
+
+                sessionGroup.setId((int) generatedId);
+
+            } else {
+                sessionGroup.setId(existing.getId());
+
+                sessionGroupRepository.update(
+                        sessionGroup
+                );
+            }
+
+        } else {
+            sessionGroupRepository.update(sessionGroup);
+        }
+
+        int sessionGroupId = sessionGroup.getId();
+
+        List<AttendanceRow> rows =
+                recordsByGroupId.get(groupId);
+
+        if (rows == null) {
             return;
         }
 
-        currentSheet.setDate(getText(etDate));
-        currentSheet.setStartTime(getText(etStartTime));
-        currentSheet.setEndTime(getText(etEndTime));
-        currentSheet.setRoom(getText(etRoom));
-        currentSheet.setGroupName(selectedGroup);
+        for (AttendanceRow row : rows) {
+            if (row.isUnmarked()) {
+                /*
+                 * L'absence de ligne Room représente
+                 * le statut « Non renseigné ».
+                 */
+                attendanceRepository.setUnreported(
+                        sessionGroupId,
+                        row.student.getStudentId()
+                );
+
+            } else {
+                AttendanceRecord record =
+                        new AttendanceRecord(
+                                sessionGroupId,
+                                row.student.getStudentId(),
+                                row.status
+                        );
+
+                attendanceRepository.save(record);
+            }
+        }
+    }
+
+    private void saveCurrentGroupFields() {
+        if (currentSessionGroup == null
+                || selectedStudentGroup == null) {
+            return;
+        }
+
+        String date = toStorageDate(
+                getText(etDate)
+        );
+
+        String startTime = getText(etStartTime);
+        String endTime = getText(etEndTime);
+        String room = getText(etRoom);
+
+        boolean changed =
+                !same(
+                        currentSessionGroup.getSessionDate(),
+                        date
+                )
+                        || !same(
+                        currentSessionGroup.getStartTime(),
+                        startTime
+                )
+                        || !same(
+                        currentSessionGroup.getEndTime(),
+                        endTime
+                )
+                        || !same(
+                        currentSessionGroup.getRoom(),
+                        room
+                );
+
+        currentSessionGroup.setSessionDate(date);
+        currentSessionGroup.setStartTime(startTime);
+        currentSessionGroup.setEndTime(endTime);
+        currentSessionGroup.setRoom(room);
+
+        sessionGroupsByGroupId.put(
+                selectedStudentGroup.getId(),
+                currentSessionGroup
+        );
+
+        if (changed) {
+            dirtyGroupIds.add(
+                    selectedStudentGroup.getId()
+            );
+        }
+    }
+
+    // ---------------------------------------------------------
+    // Modèle temporaire pour l'affichage d'un étudiant
+    // ---------------------------------------------------------
+
+    private static class AttendanceRow {
+
+        private final Student student;
+        private String status;
+
+        AttendanceRow(
+                Student student,
+                String status) {
+
+            this.student = student;
+            this.status = status;
+        }
+
+        boolean isUnmarked() {
+            return status == null
+                    || status.trim().isEmpty();
+        }
     }
 
     // ---------------------------------------------------------
@@ -766,15 +1481,41 @@ public class AttendanceSheetFragment extends Fragment {
     // ---------------------------------------------------------
 
     private String getText(TextInputEditText editText) {
-        if (editText.getText() == null) {
+        if (editText == null || editText.getText() == null) {
             return "";
         }
 
-        return editText.getText().toString().trim();
+        return editText.getText()
+                .toString()
+                .trim();
     }
 
     private String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private boolean same(String first, String second) {
+        if (first == null) {
+            return second == null;
+        }
+
+        return first.equals(second);
+    }
+
+    private boolean isViewReady() {
+        return isAdded() && getView() != null;
+    }
+
+    private String errorMessage(Exception exception) {
+        if (exception == null) {
+            return "Une erreur est survenue.";
+        }
+
+        String message = exception.getMessage();
+
+        return message == null || message.trim().isEmpty()
+                ? "Une erreur est survenue."
+                : message;
     }
 
     private String getInitials(String fullName) {
@@ -785,12 +1526,14 @@ public class AttendanceSheetFragment extends Fragment {
         String[] parts = fullName.trim().split("\\s+");
 
         if (parts.length == 1) {
-            return parts[0].substring(0, 1).toUpperCase(Locale.ROOT);
+            return parts[0]
+                    .substring(0, 1)
+                    .toUpperCase(Locale.ROOT);
         }
 
         return (
                 parts[0].substring(0, 1)
-                + parts[parts.length - 1].substring(0, 1)
+                        + parts[parts.length - 1].substring(0, 1)
         ).toUpperCase(Locale.ROOT);
     }
 
@@ -805,14 +1548,24 @@ public class AttendanceSheetFragment extends Fragment {
             int hours = Integer.parseInt(parts[0]);
             int minutes = Integer.parseInt(parts[1]);
 
-            if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+            if (hours < 0 || hours > 23
+                    || minutes < 0 || minutes > 59) {
                 return -1;
             }
 
             return hours * 60 + minutes;
 
-        } catch (NumberFormatException e) {
+        } catch (NumberFormatException exception) {
             return -1;
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (databaseExecutor != null) {
+            databaseExecutor.shutdown();
+        }
+
+        super.onDestroy();
     }
 }

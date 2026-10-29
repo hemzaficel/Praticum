@@ -1,4 +1,3 @@
-
 package com.example.praticum.ui.evaluation;
 
 import android.os.Bundle;
@@ -17,15 +16,14 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
-import com.example.praticum.ui.attendance.AttendanceDataMemory;
-import com.example.praticum.ui.attendance.AttendanceRecordMemory;
-import com.example.praticum.ui.sessions.SessionMemory;
-import com.example.praticum.ui.sessions.SessionCriterion;
-import com.example.praticum.ui.sessions.SessionRepositoryMemory;
+import com.example.praticum.data.entity.EvaluationScore;
+import com.example.praticum.data.entity.SessionCriterion;
+import com.example.praticum.data.entity.Student;
 
 import java.util.HashSet;
 import java.util.List;
@@ -34,10 +32,17 @@ import java.util.Set;
 
 public class EvaluationSheetFragment extends Fragment {
 
-    private EvaluationSheetMemory sheet;
-    private SessionMemory session;
-    private EvaluationTeamMemory currentTeam;
-    private int currentTeamIndex = 0;
+    private EvaluationViewModel viewModel;
+
+    private EvaluationViewModel.SheetState state;
+
+    private EvaluationViewModel.EvaluationTeamState currentTeam;
+
+    private int sessionId = -1;
+    private String sessionTitle = "";
+
+    private int currentTeamIndex = -1;
+    private long currentTeamId = -1;
 
     private TextView sessionView;
     private TextView maxScoreView;
@@ -50,6 +55,7 @@ public class EvaluationSheetFragment extends Fragment {
     private TextView positionView;
 
     private ProgressBar progressBar;
+
     private AutoCompleteTextView groupSearch;
     private EditText orderSearch;
 
@@ -59,8 +65,10 @@ public class EvaluationSheetFragment extends Fragment {
     private EvaluationTeamAdapter teamAdapter;
     private EvaluationCriterionAdapter criterionAdapter;
 
+    private ArrayAdapter<String> groupAdapter;
+
     public EvaluationSheetFragment() {
-        // Constructeur requis.
+        // Constructeur public requis par Android.
     }
 
     @Nullable
@@ -84,43 +92,24 @@ public class EvaluationSheetFragment extends Fragment {
 
         super.onViewCreated(view, savedInstanceState);
 
+        viewModel = new ViewModelProvider(this)
+                .get(EvaluationViewModel.class);
+
         Bundle args = getArguments();
 
-        int sessionId = args == null
+        sessionId = args == null
                 ? -1
                 : args.getInt("session_id", -1);
 
-        String sessionTitle = args == null
+        sessionTitle = args == null
                 ? ""
                 : args.getString("session_title", "");
 
-        if (sessionId < 0) {
+        if (sessionId <= 0) {
             showMessage("Séance invalide.");
             getParentFragmentManager().popBackStack();
             return;
         }
-
-        // Récupérer la séance et ses critères configurés.
-        session = SessionRepositoryMemory.getInstance()
-                .getSessionById(sessionId);
-
-        if (session == null) {
-            showMessage("Cette séance est introuvable.");
-            getParentFragmentManager().popBackStack();
-            return;
-        }
-
-        String titre = session.getTitle();
-
-        if (titre == null || titre.trim().isEmpty()) {
-            titre = sessionTitle;
-        }
-
-        sheet = EvaluationRepositoryMemory.getInstance()
-                .getSheet(sessionId, titre);
-
-        // Le barème de la fiche dépend des critères de la séance.
-        actualiserBareme();
 
         bindViews(view);
         configurerRetour(view);
@@ -128,36 +117,75 @@ public class EvaluationSheetFragment extends Fragment {
         configurerRechercheGroupe();
         configurerAjoutEtNavigation(view);
         configurerEnregistrement(view);
+        observerDonnees();
 
-        initialiserEquipes();
-        actualiserProgression();
+        viewModel.loadSheet(sessionId);
     }
 
     private void bindViews(View view) {
-        sessionView = view.findViewById(R.id.tvEvaluationSession);
-        maxScoreView = view.findViewById(R.id.tvEvaluationMaxScore);
-        progressView = view.findViewById(R.id.tvGradeProgress);
-        remainingView = view.findViewById(R.id.tvGradeRemaining);
-        progressBar = view.findViewById(R.id.progressGradeEntry);
-        memberCountView = view.findViewById(R.id.tvEvaluationMemberCount);
-        teamNameView = view.findViewById(R.id.tvEvaluationTeamName);
-        totalStatusView = view.findViewById(R.id.tvEvaluationTotalStatus);
-        totalView = view.findViewById(R.id.tvEvaluationTotal);
-        positionView = view.findViewById(R.id.tvEvaluationPosition);
+        sessionView = view.findViewById(
+                R.id.tvEvaluationSession
+        );
 
-        groupSearch = view.findViewById(R.id.autoCompleteSearchGroup);
-        orderSearch = view.findViewById(R.id.etSearchOrder);
+        maxScoreView = view.findViewById(
+                R.id.tvEvaluationMaxScore
+        );
 
-        studentsRecycler = view.findViewById(R.id.rvEvaluationStudents);
-        criteriaRecycler = view.findViewById(R.id.rvEvaluationCriteria);
+        progressView = view.findViewById(
+                R.id.tvGradeProgress
+        );
+
+        remainingView = view.findViewById(
+                R.id.tvGradeRemaining
+        );
+
+        progressBar = view.findViewById(
+                R.id.progressGradeEntry
+        );
+
+        memberCountView = view.findViewById(
+                R.id.tvEvaluationMemberCount
+        );
+
+        teamNameView = view.findViewById(
+                R.id.tvEvaluationTeamName
+        );
+
+        totalStatusView = view.findViewById(
+                R.id.tvEvaluationTotalStatus
+        );
+
+        totalView = view.findViewById(
+                R.id.tvEvaluationTotal
+        );
+
+        positionView = view.findViewById(
+                R.id.tvEvaluationPosition
+        );
+
+        groupSearch = view.findViewById(
+                R.id.autoCompleteSearchGroup
+        );
+
+        orderSearch = view.findViewById(
+                R.id.etSearchOrder
+        );
+
+        studentsRecycler = view.findViewById(
+                R.id.rvEvaluationStudents
+        );
+
+        criteriaRecycler = view.findViewById(
+                R.id.rvEvaluationCriteria
+        );
 
         if (sessionView != null) {
-            sessionView.setText(sheet.getSessionTitle());
+            sessionView.setText(sessionTitle);
         }
 
-        afficherBareme();
-
-        View scanButton = view.findViewById(R.id.btnScanTeamResponse);
+        View scanButton = view.findViewById(
+                R.id.btnScanTeamResponse
+        );
 
         if (scanButton != null) {
             scanButton.setOnClickListener(v ->
@@ -168,51 +196,143 @@ public class EvaluationSheetFragment extends Fragment {
         }
     }
 
-    private void afficherBareme() {
-        if (maxScoreView == null || session == null) {
-            return;
-        }
+    private void observerDonnees() {
+        viewModel.getSheetState().observe(
+                getViewLifecycleOwner(),
+                nouvelEtat -> {
+                    if (nouvelEtat == null || !isAdded()) {
+                        return;
+                    }
 
-        double max = calculerBaremeSession();
+                    afficherEtat(nouvelEtat);
+                }
+        );
 
-        maxScoreView.setText(
-                String.format(
-                        Locale.getDefault(),
-                        "%.2f points",
-                        max
-                )
+        viewModel.getOperationResult().observe(
+                getViewLifecycleOwner(),
+                resultat -> {
+                    if (resultat == null) {
+                        return;
+                    }
+
+                    viewModel.clearOperationResult();
+
+                    if (!resultat.isSuccess()) {
+                        showMessage(resultat.getMessage());
+
+                        if (resultat.shouldCloseScreen()
+                                && isAdded()) {
+                            getParentFragmentManager().popBackStack();
+                        }
+
+                        return;
+                    }
+
+                    if (resultat.shouldClearInputs()) {
+                        if (groupSearch != null) {
+                            groupSearch.setText("", false);
+                            groupSearch.setError(null);
+                        }
+
+                        if (orderSearch != null) {
+                            orderSearch.setText("");
+                            orderSearch.setError(null);
+                        }
+                    }
+
+                    if (!resultat.getMessage().trim().isEmpty()) {
+                        showMessage(resultat.getMessage());
+                    }
+
+                    if (resultat.shouldCloseScreen()) {
+                        getParentFragmentManager().popBackStack();
+                    }
+                }
         );
     }
 
-    private double calculerBaremeSession() {
-        if (session == null) {
-            return 0;
+    private void afficherEtat(
+            EvaluationViewModel.SheetState nouvelEtat) {
+
+        state = nouvelEtat;
+
+        if (sessionView != null) {
+            String title = state.getSession().getTitle();
+
+            sessionView.setText(
+                    title == null || title.trim().isEmpty()
+                            ? sessionTitle
+                            : title
+            );
         }
 
-        double total = 0;
+        configurerGroupes();
 
-        for (SessionCriterion criterion : session.getCriteria()) {
-            if (criterion != null
-                    && Double.isFinite(criterion.getMaxScore())
-                    && criterion.getMaxScore() > 0) {
+        List<EvaluationViewModel.EvaluationTeamState> teams =
+                state.getTeams();
 
-                total += criterion.getMaxScore();
+        if (teams.isEmpty()) {
+            currentTeamId = -1;
+            currentTeamIndex = -1;
+
+            afficherFicheVide();
+
+        } else {
+            int index = trouverIndexEquipeCourante(teams);
+
+            if (index < 0) {
+                index = Math.max(
+                        0,
+                        Math.min(
+                                currentTeamIndex,
+                                teams.size() - 1
+                        )
+                );
+            }
+
+            currentTeamIndex = index;
+            afficherEquipeCourante();
+        }
+
+        actualiserBareme();
+        actualiserProgression();
+    }
+
+    private int trouverIndexEquipeCourante(
+            List<EvaluationViewModel.EvaluationTeamState> teams) {
+
+        if (currentTeamId <= 0) {
+            return -1;
+        }
+
+        for (int i = 0; i < teams.size(); i++) {
+            if (teams.get(i).getTeam().getId() == currentTeamId) {
+                return i;
             }
         }
 
-        return total;
+        return -1;
     }
 
-    private void actualiserBareme() {
-        if (sheet == null || session == null) {
+    private void configurerGroupes() {
+        if (groupSearch == null || state == null) {
             return;
         }
 
-        sheet.setMaxScore(calculerBaremeSession());
+        groupAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line,
+                state.getGroupNames()
+        );
+
+        groupSearch.setAdapter(groupAdapter);
+        groupSearch.setThreshold(1);
     }
 
     private void configurerRetour(View view) {
-        View backButton = view.findViewById(R.id.btnEvaluationBack);
+        View backButton = view.findViewById(
+                R.id.btnEvaluationBack
+        );
 
         if (backButton != null) {
             backButton.setOnClickListener(v ->
@@ -222,118 +342,135 @@ public class EvaluationSheetFragment extends Fragment {
     }
 
     private void configurerListes() {
-        studentsRecycler.setLayoutManager(
-                new LinearLayoutManager(requireContext())
-        );
+        if (studentsRecycler != null) {
+            studentsRecycler.setLayoutManager(
+                    new LinearLayoutManager(requireContext())
+            );
+        }
 
-        criteriaRecycler.setLayoutManager(
-                new LinearLayoutManager(requireContext())
-        );
+        if (criteriaRecycler != null) {
+            criteriaRecycler.setLayoutManager(
+                    new LinearLayoutManager(requireContext())
+            );
+        }
     }
 
     private void configurerRechercheGroupe() {
-        List<String> groups = AttendanceDataMemory.getGroups();
-
-        ArrayAdapter<String> adapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                groups
-        );
-
-        groupSearch.setAdapter(adapter);
-        groupSearch.setThreshold(1);
-    }
-
-    private void initialiserEquipes() {
-        if (sheet.getTeams().isEmpty()) {
-            currentTeamIndex = -1;
-            currentTeam = null;
-            afficherFicheVide();
+        if (groupSearch == null) {
             return;
         }
 
-        currentTeamIndex = 0;
-        afficherEquipeCourante();
+        groupAdapter = new ArrayAdapter<>(
+                requireContext(),
+                android.R.layout.simple_dropdown_item_1line
+        );
+
+        groupSearch.setAdapter(groupAdapter);
+        groupSearch.setThreshold(1);
     }
 
     private void afficherFicheVide() {
         currentTeam = null;
-        currentTeamIndex = -1;
 
-        teamNameView.setText("Nouvelle équipe");
-        memberCountView.setText("0 étudiant");
-        positionView.setText("Aucune équipe");
-
-        afficherBareme();
-
-        totalView.setText(
-                String.format(
-                        Locale.getDefault(),
-                        "%.2f / %.2f",
-                        0.0,
-                        calculerBaremeSession()
-                )
-        );
-
-        totalStatusView.setText("Aucune note saisie");
-
-        studentsRecycler.setAdapter(null);
-        criteriaRecycler.setAdapter(null);
-
-        if (progressBar != null) {
-            progressBar.setProgress(0);
+        if (teamNameView != null) {
+            teamNameView.setText("Nouvelle équipe");
         }
 
-        actualiserProgression();
+        if (memberCountView != null) {
+            memberCountView.setText("0 étudiant");
+        }
 
-        EvaluationRepositoryMemory.getInstance().saveSheet(sheet);
+        if (positionView != null) {
+            positionView.setText("Aucune équipe");
+        }
+
+        if (studentsRecycler != null) {
+            studentsRecycler.setAdapter(null);
+        }
+
+        if (criteriaRecycler != null) {
+            criteriaRecycler.setAdapter(null);
+        }
+
+        actualiserTotal();
     }
 
     private void afficherEquipeCourante() {
-        if (sheet.getTeams().isEmpty()) {
+        if (state == null || state.getTeams().isEmpty()) {
             afficherFicheVide();
             return;
         }
 
+        List<EvaluationViewModel.EvaluationTeamState> teams =
+                state.getTeams();
+
         currentTeamIndex = Math.max(
                 0,
-                Math.min(currentTeamIndex, sheet.getTeams().size() - 1)
+                Math.min(currentTeamIndex, teams.size() - 1)
         );
 
-        currentTeam = sheet.getTeams().get(currentTeamIndex);
+        currentTeam = teams.get(currentTeamIndex);
+        currentTeamId = currentTeam.getTeam().getId();
 
-        teamNameView.setText(currentTeam.getName());
+        if (teamNameView != null) {
+            teamNameView.setText(
+                    currentTeam.getTeam().getName()
+            );
+        }
 
-        memberCountView.setText(
-                currentTeam.getStudents().size() + " étudiant(s)"
-        );
+        if (memberCountView != null) {
+            int count = currentTeam.getStudents().size();
 
-        positionView.setText(
-                (currentTeamIndex + 1) + " / " + sheet.getTeams().size()
-        );
+            memberCountView.setText(
+                    count
+                            + (count > 1
+                            ? " étudiants"
+                            : " étudiant")
+            );
+        }
+
+        if (positionView != null) {
+            positionView.setText(
+                    (currentTeamIndex + 1)
+                            + " / "
+                            + teams.size()
+            );
+        }
 
         teamAdapter = new EvaluationTeamAdapter(
                 currentTeam.getStudents(),
                 this::retirerEtudiant
         );
 
-        studentsRecycler.setAdapter(teamAdapter);
+        if (studentsRecycler != null) {
+            studentsRecycler.setAdapter(teamAdapter);
+        }
 
         criterionAdapter = new EvaluationCriterionAdapter(
                 currentTeam.getCriteria(),
-                this::actualiserTotal
+                currentTeam.getScores(),
+                this::onScoresChanged
         );
 
-        criteriaRecycler.setAdapter(criterionAdapter);
+        if (criteriaRecycler != null) {
+            criteriaRecycler.setAdapter(criterionAdapter);
+        }
 
-        actualiserBareme();
         actualiserTotal();
     }
 
     private void configurerAjoutEtNavigation(View view) {
-        View addButton = view.findViewById(R.id.btnAddStudentToTeam);
-        View previousButton = view.findViewById(R.id.btnPreviousEvaluation);
-        View nextButton = view.findViewById(R.id.btnNextEvaluation);
+        View addButton = view.findViewById(
+                R.id.btnAddStudentToTeam
+        );
+
+        View previousButton = view.findViewById(
+                R.id.btnPreviousEvaluation
+        );
+
+        View nextButton = view.findViewById(
+                R.id.btnNextEvaluation
+        );
 
         if (addButton != null) {
             addButton.setOnClickListener(v -> ajouterEtudiant());
@@ -341,9 +478,7 @@ public class EvaluationSheetFragment extends Fragment {
 
         if (previousButton != null) {
             previousButton.setOnClickListener(v -> {
-                if (!sheet.getTeams().isEmpty()
-                        && currentTeamIndex > 0) {
-
+                if (state != null && currentTeamIndex > 0) {
                     currentTeamIndex--;
                     afficherEquipeCourante();
                 }
@@ -352,8 +487,9 @@ public class EvaluationSheetFragment extends Fragment {
 
         if (nextButton != null) {
             nextButton.setOnClickListener(v -> {
-                if (!sheet.getTeams().isEmpty()
-                        && currentTeamIndex < sheet.getTeams().size() - 1) {
+                if (state != null
+                        && currentTeamIndex
+                        < state.getTeams().size() - 1) {
 
                     currentTeamIndex++;
                     afficherEquipeCourante();
@@ -363,8 +499,18 @@ public class EvaluationSheetFragment extends Fragment {
     }
 
     private void ajouterEtudiant() {
-        String groupName = groupSearch.getText().toString().trim();
-        String orderText = orderSearch.getText().toString().trim();
+        if (state == null) {
+            showMessage("Les données ne sont pas encore chargées.");
+            return;
+        }
+
+        String groupName = groupSearch.getText()
+                .toString()
+                .trim();
+
+        String orderText = orderSearch.getText()
+                .toString()
+                .trim();
 
         if (TextUtils.isEmpty(groupName)) {
             groupSearch.setError("Choisissez un groupe");
@@ -372,7 +518,9 @@ public class EvaluationSheetFragment extends Fragment {
         }
 
         if (TextUtils.isEmpty(orderText)) {
-            orderSearch.setError("Saisissez l'ordre de l'étudiant");
+            orderSearch.setError(
+                    "Saisissez l'ordre de l'étudiant"
+            );
             return;
         }
 
@@ -385,238 +533,229 @@ public class EvaluationSheetFragment extends Fragment {
             return;
         }
 
-        AttendanceRecordMemory selected = null;
+        long teamId = currentTeam == null
+                ? -1
+                : currentTeam.getTeam().getId();
 
-        for (AttendanceRecordMemory student :
-                AttendanceDataMemory.getStudents(groupName)) {
-
-            if (student.getGroupOrder() == order) {
-                selected = student;
-                break;
-            }
-        }
-
-        if (selected == null) {
-            showMessage(
-                    "Aucun étudiant trouvé pour ce groupe et cet ordre."
-            );
-            return;
-        }
-
-        // Créer une équipe lors du premier ajout.
-        if (currentTeam == null) {
-            if (session.getCriteria().isEmpty()) {
-                showMessage(
-                        "Configurez d'abord les critères de cette séance."
-                );
-                return;
-            }
-
-            currentTeam = new EvaluationTeamMemory(
-                    sheet.getTeams().size() + 1,
-                    "Équipe " + (sheet.getTeams().size() + 1)
-            );
-
-            initialiserCriteres(currentTeam);
-
-            sheet.addTeam(currentTeam);
-            currentTeamIndex = sheet.getTeams().size() - 1;
-        }
-
-        // Empêcher qu'un étudiant soit affecté à plusieurs équipes.
-        for (EvaluationTeamMemory team : sheet.getTeams()) {
-            if (team == currentTeam) {
-                continue;
-            }
-
-            for (AttendanceRecordMemory student : team.getStudents()) {
-                if (student.getStudentId() == selected.getStudentId()) {
-                    showMessage(
-                            "Cet étudiant appartient déjà à une autre équipe."
-                    );
-                    return;
-                }
-            }
-        }
-
-        if (!currentTeam.addStudent(selected)) {
-            showMessage("Cet étudiant est déjà dans cette équipe.");
-            return;
-        }
-
-        groupSearch.setText("", false);
-        orderSearch.setText("");
-
-        afficherEquipeCourante();
-
-        EvaluationRepositoryMemory.getInstance().saveSheet(sheet);
+        viewModel.addStudent(
+                sessionId,
+                teamId,
+                groupName,
+                order
+        );
     }
 
-    private void initialiserCriteres(EvaluationTeamMemory team) {
-        if (team == null || session == null) {
+    private void retirerEtudiant(
+            EvaluationViewModel.StudentWithGroup entry) {
+
+        if (currentTeam == null || entry == null) {
             return;
         }
 
-        team.getCriteria().clear();
+        Student student = entry.getStudent();
 
-        List<SessionCriterion> criteresSession = session.getCriteria();
-
-        for (int i = 0; i < criteresSession.size(); i++) {
-            SessionCriterion critere = criteresSession.get(i);
-
-            if (critere == null) {
-                continue;
-            }
-
-            double maxScore = critere.getMaxScore();
-
-            if (!Double.isFinite(maxScore) || maxScore <= 0) {
-                continue;
-            }
-
-            String title = critere.getTitle() == null
-                    ? ""
-                    : critere.getTitle().trim();
-
-            String description = critere.getDescription() == null
-                    ? ""
-                    : critere.getDescription().trim();
-
-            if (title.isEmpty()) {
-                title = "Critère " + (i + 1);
-            }
-
-            team.getCriteria().add(
-                    new EvaluationCriterion(
-                            "C" + (i + 1),
-                            title,
-                            description,
-                            maxScore
-                    )
-            );
-        }
+        viewModel.removeStudent(
+                sessionId,
+                currentTeam.getTeam().getId(),
+                student.getStudentId()
+        );
     }
 
-    private void retirerEtudiant(AttendanceRecordMemory student) {
-        if (currentTeam == null || student == null) {
+    private void actualiserBareme() {
+        if (maxScoreView == null) {
             return;
         }
 
-        currentTeam.removeStudent(student.getStudentId());
+        maxScoreView.setText(
+                String.format(
+                        Locale.getDefault(),
+                        "%.2f points",
+                        calculerBaremeSession()
+                )
+        );
+    }
 
-        EvaluationRepositoryMemory.getInstance().saveSheet(sheet);
+    private double calculerBaremeSession() {
+        if (state == null) {
+            return 0;
+        }
 
-        afficherEquipeCourante();
+        double total = 0;
+
+        for (SessionCriterion criterion : state.getCriteria()) {
+            double maximum = criterion.getMaxScore();
+
+            if (Double.isFinite(maximum) && maximum > 0) {
+                total += maximum;
+            }
+        }
+
+        return total;
     }
 
     private void actualiserTotal() {
+        double total = currentTeam == null
+                ? 0
+                : currentTeam.getTotalScore();
+
+        double maximum = currentTeam == null
+                ? calculerBaremeSession()
+                : currentTeam.getMaxScore();
+
+        if (totalView != null) {
+            totalView.setText(
+                    String.format(
+                            Locale.getDefault(),
+                            "%.2f / %.2f",
+                            total,
+                            maximum
+                    )
+            );
+        }
+
+        if (totalStatusView != null) {
+            totalStatusView.setText(
+                    total > 0
+                            ? "Notation en cours"
+                            : "Aucune note saisie"
+            );
+        }
+
+        actualiserProgression();
+    }
+
+    private void onScoresChanged() {
         if (currentTeam == null) {
-            if (totalView != null) {
-                totalView.setText(
-                        String.format(
-                                Locale.getDefault(),
-                                "%.2f / %.2f",
-                                0.0,
-                                calculerBaremeSession()
-                        )
-                );
-            }
-
-            if (totalStatusView != null) {
-                totalStatusView.setText("Aucune note saisie");
-            }
-
-            actualiserProgression();
             return;
         }
 
-        double total = currentTeam.getTotalScore();
-        double max = currentTeam.getMaxScore();
+        actualiserTotal();
 
-        totalView.setText(
-                String.format(
-                        Locale.getDefault(),
-                        "%.2f / %.2f",
-                        total,
-                        max
-                )
+        viewModel.saveScores(
+                currentTeam.getTeam().getId(),
+                currentTeam.getScores()
         );
-
-        totalStatusView.setText(
-                total > 0
-                        ? "Notation en cours"
-                        : "Aucune note saisie"
-        );
-
-        actualiserProgression();
-
-        EvaluationRepositoryMemory.getInstance().saveSheet(sheet);
     }
 
     private void actualiserProgression() {
-        int totalEtudiants = 0;
-
-        for (String groupe : AttendanceDataMemory.getGroups()) {
-            totalEtudiants += AttendanceDataMemory.getStudents(groupe).size();
+        if (state == null) {
+            return;
         }
 
-        Set<Integer> etudiantsEvalués = new HashSet<>();
+        Set<String> evaluatedStudentIds = new HashSet<>();
 
-        for (EvaluationTeamMemory team : sheet.getTeams()) {
-            for (AttendanceRecordMemory student : team.getStudents()) {
-                etudiantsEvalués.add(student.getStudentId());
+        for (EvaluationViewModel.EvaluationTeamState team
+                : state.getTeams()) {
+
+            if (!team.isEvaluated()) {
+                continue;
+            }
+
+            for (EvaluationViewModel.StudentWithGroup entry
+                    : team.getStudents()) {
+
+                evaluatedStudentIds.add(
+                        entry.getStudent().getStudentId()
+                );
             }
         }
 
-        int nombreEvalués = etudiantsEvalués.size();
+        int totalStudents = state.getTotalStudents();
+        int evaluatedCount = evaluatedStudentIds.size();
 
-        int nombreRestants = Math.max(
+        int remainingCount = Math.max(
                 0,
-                totalEtudiants - nombreEvalués
+                totalStudents - evaluatedCount
         );
 
-        int pourcentage = totalEtudiants == 0
+        int progress = totalStudents == 0
                 ? 0
-                : nombreEvalués * 100 / totalEtudiants;
+                : evaluatedCount * 100 / totalStudents;
 
         if (progressBar != null) {
             progressBar.setMax(100);
-            progressBar.setProgress(pourcentage);
+            progressBar.setProgress(progress);
         }
 
         if (progressView != null) {
             progressView.setText(
-                    nombreEvalués + " / " + totalEtudiants
+                    evaluatedCount + " / "
+                            + totalStudents
                             + " étudiants évalués"
             );
         }
 
         if (remainingView != null) {
             remainingView.setText(
-                    nombreRestants + " étudiant(s) restant(s)"
+                    remainingCount + " étudiant(s) restant(s)"
             );
         }
     }
 
     private void configurerEnregistrement(View view) {
-        Button saveButton = view.findViewById(R.id.btnSaveEvaluation);
+        Button saveButton = view.findViewById(
+                R.id.btnSaveEvaluation
+        );
 
-        if (saveButton != null) {
-            saveButton.setOnClickListener(v -> {
-                EvaluationRepositoryMemory.getInstance().saveSheet(sheet);
-
-                showMessage("Évaluation enregistrée en mémoire.");
-
-                getParentFragmentManager().popBackStack();
-            });
+        if (saveButton == null) {
+            return;
         }
+
+        saveButton.setOnClickListener(v -> {
+            long teamId = currentTeam == null
+                    ? -1
+                    : currentTeam.getTeam().getId();
+
+            List<EvaluationScore> scores = currentTeam == null
+                    ? null
+                    : currentTeam.getScores();
+
+            viewModel.saveEvaluation(
+                    sessionId,
+                    teamId,
+                    scores
+            );
+        });
     }
 
     private void showMessage(String message) {
+        if (!isAdded()
+                || message == null
+                || message.trim().isEmpty()) {
+            return;
+        }
+
         Toast.makeText(
                 requireContext(),
                 message,
                 Toast.LENGTH_SHORT
         ).show();
+    }
+
+    @Override
+    public void onDestroyView() {
+        sessionView = null;
+        maxScoreView = null;
+        progressView = null;
+        remainingView = null;
+        memberCountView = null;
+        teamNameView = null;
+        totalStatusView = null;
+        totalView = null;
+        positionView = null;
+
+        progressBar = null;
+
+        groupSearch = null;
+        orderSearch = null;
+
+        studentsRecycler = null;
+        criteriaRecycler = null;
+
+        teamAdapter = null;
+        criterionAdapter = null;
+        groupAdapter = null;
+
+        super.onDestroyView();
     }
 }

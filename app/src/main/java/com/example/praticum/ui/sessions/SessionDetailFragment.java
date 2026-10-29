@@ -1,4 +1,3 @@
-
 package com.example.praticum.ui.sessions;
 
 import android.os.Bundle;
@@ -12,17 +11,22 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.data.entity.Session;
 import com.example.praticum.ui.attendance.AttendanceSheetFragment;
 import com.example.praticum.ui.evaluation.EvaluationSheetFragment;
 import com.example.praticum.ui.evaluation.SessionEvaluationsFragment;
 
 public class SessionDetailFragment extends Fragment {
 
-    private SessionRepositoryMemory repository;
-    private SessionMemory session;
+    private SessionViewModel viewModel;
+
+    private SessionViewModel.SessionDetails sessionDetails;
+
+    private View rootView;
 
     private TextView titleView;
     private TextView statusView;
@@ -30,10 +34,13 @@ public class SessionDetailFragment extends Fragment {
     private TextView moduleView;
     private TextView descriptionView;
     private TextView attendanceSummaryView;
-
     private TextView tvSessionDetailCriteriaCount;
 
+    private int sessionId = -1;
+    private boolean alreadyResumed = false;
+
     public SessionDetailFragment() {
+        // Constructeur public requis par Android.
     }
 
     @Nullable
@@ -57,65 +64,138 @@ public class SessionDetailFragment extends Fragment {
 
         super.onViewCreated(view, savedInstanceState);
 
-        repository = SessionRepositoryMemory.getInstance();
+        rootView = view;
 
-        titleView = view.findViewById(R.id.tvSessionDetailTitle);
-        statusView = view.findViewById(R.id.tvSessionDetailStatus);
-        typeView = view.findViewById(R.id.tvSessionDetailType);
-        moduleView = view.findViewById(R.id.tvSessionDetailModule);
-        descriptionView =
-                view.findViewById(R.id.tvSessionDetailDescription);
-        attendanceSummaryView =
-                view.findViewById(R.id.tvSessionDetailAttendanceSummary);
-        tvSessionDetailCriteriaCount =
-                view.findViewById(R.id.tvSessionDetailCriteriaCount);
+        viewModel = new ViewModelProvider(this)
+                .get(SessionViewModel.class);
 
+        titleView = view.findViewById(
+                R.id.tvSessionDetailTitle
+        );
+
+        statusView = view.findViewById(
+                R.id.tvSessionDetailStatus
+        );
+
+        typeView = view.findViewById(
+                R.id.tvSessionDetailType
+        );
+
+        moduleView = view.findViewById(
+                R.id.tvSessionDetailModule
+        );
+
+        descriptionView = view.findViewById(
+                R.id.tvSessionDetailDescription
+        );
+
+        attendanceSummaryView = view.findViewById(
+                R.id.tvSessionDetailAttendanceSummary
+        );
+
+        tvSessionDetailCriteriaCount = view.findViewById(
+                R.id.tvSessionDetailCriteriaCount
+        );
 
         Bundle args = getArguments();
-        int sessionId = args == null
+
+        sessionId = args == null
                 ? -1
                 : args.getInt("session_id", -1);
 
-        session = repository.getSessionById(sessionId);
+        configurerActions(view);
+        observerDonnees();
 
-        if (session == null) {
-            Toast.makeText(
-                    requireContext(),
-                    "Séance introuvable",
-                    Toast.LENGTH_SHORT
-            ).show();
+        if (sessionId > 0) {
+            viewModel.loadSession(sessionId);
+        } else {
+            afficherSeanceIntrouvable();
+        }
+    }
 
-            getParentFragmentManager().popBackStack();
+    private void observerDonnees() {
+        viewModel.getSessionDetails().observe(
+                getViewLifecycleOwner(),
+                details -> {
+                    if (!isAdded()) {
+                        return;
+                    }
+
+                    if (details == null) {
+                        afficherSeanceIntrouvable();
+                        return;
+                    }
+
+                    sessionDetails = details;
+
+                    configurerEntete();
+                    afficherSeance();
+                }
+        );
+
+        viewModel.getOperationResult().observe(
+                getViewLifecycleOwner(),
+                resultat -> {
+                    if (resultat == null) {
+                        return;
+                    }
+
+                    viewModel.clearOperationResult();
+
+                    if (!isAdded()) {
+                        return;
+                    }
+
+                    Toast.makeText(
+                            requireContext(),
+                            resultat.getMessage(),
+                            Toast.LENGTH_SHORT
+                    ).show();
+
+                    if (resultat.isSuccess()) {
+                        getParentFragmentManager().popBackStack();
+                    }
+                }
+        );
+    }
+
+    private void configurerEntete() {
+        if (rootView == null || sessionDetails == null) {
             return;
         }
 
-        configurerEntete(view);
-        configurerActions(view);
-        displaySession();
-    }
-
-    private void configurerEntete(@NonNull View view) {
         CommonHeaderHelper.configurerEnteteSousFenetre(
-                view,
+                rootView,
                 "Détails de la séance",
-                session.getTitle(),
+                sessionDetails.getSession().getTitle(),
                 requireActivity()
         );
     }
 
     private void configurerActions(@NonNull View view) {
-        View editButton =
-                view.findViewById(R.id.btnEditSessionDetail);
-        View deleteButton =
-                view.findViewById(R.id.btnDeleteSessionDetail);
-        View archiveButton =
-                view.findViewById(R.id.btnArchiveSession);
-        View attendanceButton =
-                view.findViewById(R.id.btnOpenSessionAttendance);
-        View startEvaluationButton =
-                view.findViewById(R.id.btnStartEvaluation);
-        View viewEvaluationButton =
-                view.findViewById(R.id.btnViewEvaluation);
+        View editButton = view.findViewById(
+                R.id.btnEditSessionDetail
+        );
+
+        View deleteButton = view.findViewById(
+                R.id.btnDeleteSessionDetail
+        );
+
+        View archiveButton = view.findViewById(
+                R.id.btnArchiveSession
+        );
+
+        View attendanceButton = view.findViewById(
+                R.id.btnOpenSessionAttendance
+        );
+
+        View startEvaluationButton = view.findViewById(
+                R.id.btnStartEvaluation
+        );
+
+        View viewEvaluationButton = view.findViewById(
+                R.id.btnViewEvaluation
+        );
 
         if (editButton != null) {
             editButton.setOnClickListener(v -> openEditForm());
@@ -130,47 +210,48 @@ public class SessionDetailFragment extends Fragment {
         }
 
         if (attendanceButton != null) {
-            attendanceButton.setOnClickListener(v -> ouvrirFeuillePresence());
+            attendanceButton.setOnClickListener(
+                    v -> ouvrirFeuillePresence()
+            );
         }
 
         if (startEvaluationButton != null) {
-            startEvaluationButton.setOnClickListener(v -> ouvrirFicheEvaluation());
+            startEvaluationButton.setOnClickListener(
+                    v -> ouvrirFicheEvaluation()
+            );
         }
 
         if (viewEvaluationButton != null) {
-            viewEvaluationButton.setOnClickListener(v -> ouvrirConsultationEvaluations());
+            viewEvaluationButton.setOnClickListener(
+                    v -> ouvrirConsultationEvaluations()
+            );
         }
     }
 
-
-    private void ouvrirConsultationEvaluations() {
-        if (session == null) {
+    private void afficherSeance() {
+        if (sessionDetails == null) {
             return;
         }
 
-        SessionEvaluationsFragment fragment = new SessionEvaluationsFragment();
+        Session session = sessionDetails.getSession();
 
-        Bundle args = new Bundle();
-        args.putInt("session_id", session.getId());
-        args.putString("session_title", session.getTitle());
-        fragment.setArguments(args);
+        titleView.setText(
+                valeurOu(session.getTitle(), "Séance sans titre")
+        );
 
-        getParentFragmentManager()
-                .beginTransaction()
-                .replace(R.id.mainContainer, fragment)
-                .addToBackStack("session_evaluations")
-                .commit();
-    }
+        typeView.setText(
+                valeurOu(
+                        session.getActivityType(),
+                        "Type non renseigné"
+                )
+        );
 
-
-    private void displaySession() {
-        if (session == null) {
-            return;
-        }
-
-        titleView.setText(valeurOu(session.getTitle(), "Séance sans titre"));
-        typeView.setText(valeurOu(session.getActivityType(), "Type non renseigné"));
-        moduleView.setText(valeurOu(session.getModule(), "Module non renseigné"));
+        moduleView.setText(
+                valeurOu(
+                        sessionDetails.getModuleName(),
+                        "Module non renseigné"
+                )
+        );
 
         statusView.setText(
                 session.isArchived()
@@ -178,11 +259,11 @@ public class SessionDetailFragment extends Fragment {
                         : valeurOu(session.getStatus(), "À venir")
         );
 
-        String description = session.getDescription();
         descriptionView.setText(
-                description == null || description.trim().isEmpty()
-                        ? "Aucune description renseignée."
-                        : description
+                valeurOu(
+                        session.getDescription(),
+                        "Aucune description renseignée."
+                )
         );
 
         if (attendanceSummaryView != null) {
@@ -191,9 +272,13 @@ public class SessionDetailFragment extends Fragment {
             );
         }
 
-        int nombreCriteres = session.getCriteria().size();
-
-        tvSessionDetailCriteriaCount.setText(String.valueOf(nombreCriteres));
+        if (tvSessionDetailCriteriaCount != null) {
+            tvSessionDetailCriteriaCount.setText(
+                    String.valueOf(
+                            sessionDetails.getCriteria().size()
+                    )
+            );
+        }
     }
 
     private String valeurOu(String value, String fallback) {
@@ -202,12 +287,26 @@ public class SessionDetailFragment extends Fragment {
                 : value;
     }
 
+    private Session sessionActuelle() {
+        return sessionDetails == null
+                ? null
+                : sessionDetails.getSession();
+    }
+
     private void ouvrirFicheEvaluation() {
-        EvaluationSheetFragment fragment = new EvaluationSheetFragment();
+        Session session = sessionActuelle();
+
+        if (session == null) {
+            return;
+        }
+
+        EvaluationSheetFragment fragment =
+                new EvaluationSheetFragment();
 
         Bundle args = new Bundle();
         args.putInt("session_id", session.getId());
         args.putString("session_title", session.getTitle());
+
         fragment.setArguments(args);
 
         getParentFragmentManager()
@@ -218,11 +317,19 @@ public class SessionDetailFragment extends Fragment {
     }
 
     private void ouvrirFeuillePresence() {
-        AttendanceSheetFragment fragment = new AttendanceSheetFragment();
+        Session session = sessionActuelle();
+
+        if (session == null) {
+            return;
+        }
+
+        AttendanceSheetFragment fragment =
+                new AttendanceSheetFragment();
 
         Bundle args = new Bundle();
         args.putInt("session_id", session.getId());
         args.putString("session_title", session.getTitle());
+
         fragment.setArguments(args);
 
         getParentFragmentManager()
@@ -232,11 +339,42 @@ public class SessionDetailFragment extends Fragment {
                 .commit();
     }
 
-    private void openEditForm() {
-        SessionFormFragment fragment = new SessionFormFragment();
+    private void ouvrirConsultationEvaluations() {
+        Session session = sessionActuelle();
+
+        if (session == null) {
+            return;
+        }
+
+        SessionEvaluationsFragment fragment =
+                new SessionEvaluationsFragment();
 
         Bundle args = new Bundle();
         args.putInt("session_id", session.getId());
+        args.putString("session_title", session.getTitle());
+
+        fragment.setArguments(args);
+
+        getParentFragmentManager()
+                .beginTransaction()
+                .replace(R.id.mainContainer, fragment)
+                .addToBackStack("session_evaluations")
+                .commit();
+    }
+
+    private void openEditForm() {
+        Session session = sessionActuelle();
+
+        if (session == null) {
+            return;
+        }
+
+        SessionFormFragment fragment =
+                new SessionFormFragment();
+
+        Bundle args = new Bundle();
+        args.putInt("session_id", session.getId());
+
         fragment.setArguments(args);
 
         getParentFragmentManager()
@@ -247,53 +385,109 @@ public class SessionDetailFragment extends Fragment {
     }
 
     private void confirmDelete() {
+        Session session = sessionActuelle();
+
+        if (session == null) {
+            return;
+        }
+
         new AlertDialog.Builder(requireContext())
                 .setTitle("Supprimer la séance")
-                .setMessage("Voulez-vous vraiment supprimer cette séance ?")
-                .setNegativeButton("Annuler", (dialog, which) -> dialog.dismiss())
-                .setPositiveButton("Supprimer", (dialog, which) -> {
-                    repository.deleteSession(session.getId());
-
-                    Toast.makeText(
-                            requireContext(),
-                            "Séance supprimée",
-                            Toast.LENGTH_SHORT
-                    ).show();
-
-                    getParentFragmentManager().popBackStack();
-                })
+                .setMessage(
+                        "Voulez-vous vraiment supprimer cette séance ?"
+                )
+                .setNegativeButton(
+                        "Annuler",
+                        (dialog, which) -> dialog.dismiss()
+                )
+                .setPositiveButton(
+                        "Supprimer",
+                        (dialog, which) ->
+                                viewModel.deleteSession(session.getId())
+                )
                 .show();
     }
 
     private void archiveSession() {
+        Session session = sessionActuelle();
+
+        if (session == null) {
+            return;
+        }
+
         if (session.isArchived()) {
-            showTemporaryMessage("Cette séance est déjà archivée");
+            afficherMessage(
+                    "Cette séance est déjà archivée"
+            );
             return;
         }
 
         new AlertDialog.Builder(requireContext())
                 .setTitle("Archiver la séance")
-                .setMessage("Voulez-vous archiver cette séance ?")
-                .setNegativeButton("Annuler", (dialog, which) -> dialog.dismiss())
-                .setPositiveButton("Archiver", (dialog, which) -> {
-                    repository.archiveSession(session.getId());
-
-                    Toast.makeText(
-                            requireContext(),
-                            "Séance archivée",
-                            Toast.LENGTH_SHORT
-                    ).show();
-
-                    getParentFragmentManager().popBackStack();
-                })
+                .setMessage(
+                        "Voulez-vous archiver cette séance ?"
+                )
+                .setNegativeButton(
+                        "Annuler",
+                        (dialog, which) -> dialog.dismiss()
+                )
+                .setPositiveButton(
+                        "Archiver",
+                        (dialog, which) ->
+                                viewModel.archiveSession(session.getId())
+                )
                 .show();
     }
 
-    private void showTemporaryMessage(String message) {
+    private void afficherMessage(String message) {
         Toast.makeText(
                 requireContext(),
                 message,
                 Toast.LENGTH_SHORT
         ).show();
+    }
+
+    private void afficherSeanceIntrouvable() {
+        if (!isAdded()) {
+            return;
+        }
+
+        Toast.makeText(
+                requireContext(),
+                "Séance introuvable",
+                Toast.LENGTH_SHORT
+        ).show();
+
+        getParentFragmentManager().popBackStack();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        /*
+         * Le premier chargement est effectué dans onViewCreated().
+         * Lorsqu'on revient du formulaire, on relit les dernières données.
+         */
+        if (alreadyResumed && viewModel != null && sessionId > 0) {
+            viewModel.loadSession(sessionId);
+        }
+
+        alreadyResumed = true;
+    }
+
+    @Override
+    public void onDestroyView() {
+        rootView = null;
+
+        titleView = null;
+        statusView = null;
+        typeView = null;
+        moduleView = null;
+        descriptionView = null;
+        attendanceSummaryView = null;
+        tvSessionDetailCriteriaCount = null;
+
+        super.onDestroyView();
     }
 }

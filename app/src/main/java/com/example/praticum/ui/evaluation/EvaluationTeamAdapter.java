@@ -1,4 +1,3 @@
-
 package com.example.praticum.ui.evaluation;
 
 import android.view.LayoutInflater;
@@ -10,24 +9,33 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
-import com.example.praticum.ui.attendance.AttendanceRecordMemory;
+import com.example.praticum.data.entity.Student;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class EvaluationTeamAdapter
         extends RecyclerView.Adapter<EvaluationTeamAdapter.ViewHolder> {
 
     public interface OnRemoveStudentListener {
-        void onRemove(AttendanceRecordMemory student);
+        void onRemove(
+                EvaluationViewModel.StudentWithGroup student
+        );
     }
 
-    private final List<AttendanceRecordMemory> students;
+    private final List<EvaluationViewModel.StudentWithGroup> students =
+            new ArrayList<>();
+
     private final OnRemoveStudentListener listener;
 
     public EvaluationTeamAdapter(
-            List<AttendanceRecordMemory> students,
+            List<EvaluationViewModel.StudentWithGroup> students,
             OnRemoveStudentListener listener) {
-        this.students = students;
+
+        if (students != null) {
+            this.students.addAll(students);
+        }
+
         this.listener = listener;
     }
 
@@ -38,7 +46,11 @@ public class EvaluationTeamAdapter
             int viewType) {
 
         View view = LayoutInflater.from(parent.getContext())
-                .inflate(R.layout.item_evaluation_team, parent, false);
+                .inflate(
+                        R.layout.item_evaluation_team,
+                        parent,
+                        false
+                );
 
         return new ViewHolder(view);
     }
@@ -48,35 +60,32 @@ public class EvaluationTeamAdapter
             @NonNull ViewHolder holder,
             int position) {
 
-        AttendanceRecordMemory student = students.get(position);
+        EvaluationViewModel.StudentWithGroup entry =
+                students.get(position);
 
-        String name = student.getStudentName();
-        holder.name.setText(name);
+        Student student = entry.getStudent();
+
+        holder.name.setText(student.getFullName());
+        holder.initials.setText(student.getInitials());
+
+        String groupName = entry.getGroupName();
+
+        if (groupName == null || groupName.trim().isEmpty()) {
+            groupName = "Groupe non renseigné";
+        }
+
         holder.details.setText(
-                student.getMatricule() + " • " + student.getGroupName());
-
-        holder.initials.setText(getInitials(name));
+                "Ordre : "
+                        + student.getGroupOrder()
+                        + " • "
+                        + groupName
+        );
 
         holder.remove.setOnClickListener(v -> {
             if (listener != null) {
-                listener.onRemove(student);
+                listener.onRemove(entry);
             }
         });
-    }
-
-    private String getInitials(String name) {
-        if (name == null || name.trim().isEmpty()) {
-            return "?";
-        }
-
-        String[] parts = name.trim().split("\\s+");
-        StringBuilder initials = new StringBuilder();
-
-        for (int i = 0; i < Math.min(2, parts.length); i++) {
-            initials.append(parts[i].charAt(0));
-        }
-
-        return initials.toString().toUpperCase();
     }
 
     @Override
@@ -86,18 +95,29 @@ public class EvaluationTeamAdapter
 
     static class ViewHolder extends RecyclerView.ViewHolder {
 
-        TextView initials;
-        TextView name;
-        TextView details;
-        View remove;
+        final TextView initials;
+        final TextView name;
+        final TextView details;
+        final View remove;
 
         ViewHolder(@NonNull View itemView) {
             super(itemView);
 
-            initials = itemView.findViewById(R.id.tvTeamStudentInitials);
-            name = itemView.findViewById(R.id.tvTeamStudentName);
-            details = itemView.findViewById(R.id.tvTeamStudentDetails);
-            remove = itemView.findViewById(R.id.btnRemoveTeamStudent);
+            initials = itemView.findViewById(
+                    R.id.tvTeamStudentInitials
+            );
+
+            name = itemView.findViewById(
+                    R.id.tvTeamStudentName
+            );
+
+            details = itemView.findViewById(
+                    R.id.tvTeamStudentDetails
+            );
+
+            remove = itemView.findViewById(
+                    R.id.btnRemoveTeamStudent
+            );
         }
     }
 }

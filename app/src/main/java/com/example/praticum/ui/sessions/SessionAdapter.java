@@ -1,4 +1,3 @@
-
 package com.example.praticum.ui.sessions;
 
 import android.view.LayoutInflater;
@@ -10,6 +9,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
+import com.example.praticum.data.entity.Session;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -18,17 +18,18 @@ public class SessionAdapter
         extends RecyclerView.Adapter<SessionAdapter.SessionViewHolder> {
 
     public interface OnSessionClickListener {
-        void onSessionClick(SessionMemory session);
+        void onSessionClick(Session session);
     }
 
-    private final List<SessionMemory> sessions = new ArrayList<>();
+    private final List<Session> sessions = new ArrayList<>();
+
     private final OnSessionClickListener listener;
 
     public SessionAdapter(OnSessionClickListener listener) {
         this.listener = listener;
     }
 
-    public void submitList(List<SessionMemory> nouvelleListe) {
+    public void submitList(List<Session> nouvelleListe) {
         sessions.clear();
 
         if (nouvelleListe != null) {
@@ -55,11 +56,19 @@ public class SessionAdapter
             @NonNull SessionViewHolder holder,
             int position) {
 
-        SessionMemory session = sessions.get(position);
+        Session session = sessions.get(position);
 
-        holder.title.setText(valeurOuVide(session.getTitle()));
-        holder.type.setText(valeurOuVide(session.getActivityType()));
-        holder.description.setText(valeurOuVide(session.getDescription()));
+        holder.title.setText(
+                valeurOuVide(session.getTitle())
+        );
+
+        holder.type.setText(
+                valeurOuVide(session.getActivityType())
+        );
+
+        holder.description.setText(
+                valeurOuVide(session.getDescription())
+        );
 
         String statut = session.isArchived()
                 ? "Archivée"
@@ -97,7 +106,9 @@ public class SessionAdapter
 
             title = itemView.findViewById(R.id.tvSessionTitle);
             type = itemView.findViewById(R.id.tvSessionType);
-            description = itemView.findViewById(R.id.tvSessionDescription);
+            description = itemView.findViewById(
+                    R.id.tvSessionDescription
+            );
             status = itemView.findViewById(R.id.tvSessionStatus);
         }
     }
