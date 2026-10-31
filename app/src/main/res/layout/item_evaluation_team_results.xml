@@ -1,1 +1,143 @@
-<?xml version="1.0" encoding="utf-8"?><com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp" app:cardBackgroundColor="@color/white" app:cardCornerRadius="14dp" app:cardElevation="0dp" app:strokeColor="@color/color_outline" app:strokeWidth="1dp"><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical"><LinearLayout android:id="@+id/layoutEvaluationTeamHeader" android:layout_width="match_parent" android:layout_height="wrap_content" android:background="?attr/selectableItemBackground" android:clickable="true" android:focusable="true" android:gravity="center_vertical" android:orientation="horizontal" android:padding="14dp"><LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical"><TextView android:id="@+id/tvEvaluationTeamName" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Équipe 1" android:textColor="@color/text_primary" android:textSize="15sp" android:textStyle="bold"/><TextView android:id="@+id/tvEvaluationTeamMeta" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:text="étudiants" android:textColor="@color/text_secondary" android:textSize="12sp"/></LinearLayout><TextView android:id="@+id/tvEvaluationTeamChevron" android:layout_width="wrap_content" android:layout_height="wrap_content" android:paddingStart="12dp" android:text="⌃" android:textColor="@color/primary_dark" android:textSize="20sp"/></LinearLayout><androidx.recyclerview.widget.RecyclerView android:id="@+id/rvEvaluationTeamStudents" android:layout_width="match_parent" android:layout_height="wrap_content" android:paddingHorizontal="10dp" android:nestedScrollingEnabled="false"/></LinearLayout></com.google.android.material.card.MaterialCardView>
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardBackgroundColor="@color/white"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="1dp"
+    app:strokeColor="@color/color_outline"
+    app:strokeWidth="1dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- En-tête cliquable : numéro, nom, date, indicateurs, actions -->
+        <LinearLayout
+            android:id="@+id/layoutEvaluationTeamHeader"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="14dp"
+            android:paddingEnd="6dp"
+            android:paddingBottom="14dp">
+
+            <TextView
+                android:id="@+id/tvEvaluationTeamNumber"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_profile_circle"
+                android:gravity="center"
+                android:text="1"
+                android:textColor="@color/primary_dark"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tvEvaluationTeamName"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Équipe 1"
+                    android:textColor="@color/text_primary"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvEvaluationTeamMeta"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:text="Évaluation n° 1 · 31/10/2026 · 14:30"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <TextView
+                        android:id="@+id/tvEvaluationTeamCount"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:background="@drawable/bg_status_badge"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="4dp"
+                        android:text="3 étudiants"
+                        android:textColor="@color/primary_dark"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvEvaluationTeamScore"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:background="@drawable/bg_status_badge"
+                        android:paddingHorizontal="10dp"
+                        android:paddingVertical="4dp"
+                        android:text="12,50 / 20"
+                        android:textColor="@color/color_success"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+                </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnEvaluationTeamActions"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="44dp"
+                android:layout_height="48dp"
+                android:contentDescription="Actions de l’équipe"
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:minWidth="0dp"
+                android:padding="0dp"
+                android:text="⋮"
+                android:textColor="@color/text_primary"
+                android:textSize="24sp"
+                android:visibility="gone" />
+
+            <TextView
+                android:id="@+id/tvEvaluationTeamChevron"
+                android:layout_width="32dp"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:text="⌃"
+                android:textColor="@color/primary_dark"
+                android:textSize="20sp" />
+        </LinearLayout>
+
+        <View
+            android:id="@+id/dividerEvaluationTeam"
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="@color/color_divider"
+            android:visibility="gone" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvEvaluationTeamStudents"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:nestedScrollingEnabled="false"
+            android:paddingHorizontal="10dp"
+            android:paddingTop="10dp" />
+    </LinearLayout>
+</com.google.android.material.card.MaterialCardView>

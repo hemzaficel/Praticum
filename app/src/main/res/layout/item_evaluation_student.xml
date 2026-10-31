@@ -4,28 +4,41 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
+    android:layout_marginBottom="8dp"
+    app:cardBackgroundColor="@color/screen_background"
     app:cardCornerRadius="12dp"
-    app:cardElevation="1dp"
-    app:strokeWidth="1dp"
+    app:cardElevation="0dp"
     app:strokeColor="@color/color_divider"
-    app:cardBackgroundColor="@color/white">
+    app:strokeWidth="1dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical"
-        android:padding="16dp">
+        android:padding="12dp">
 
+        <!-- Identité de l'étudiant et note -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
+            <TextView
+                android:id="@+id/tvEvaluationStudentInitials"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_profile_circle"
+                android:gravity="center"
+                android:text="AB"
+                android:textColor="@color/primary_dark"
+                android:textSize="15sp"
+                android:textStyle="bold" />
+
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
                 android:layout_weight="1"
                 android:orientation="vertical">
 
@@ -35,62 +48,93 @@
                     android:layout_height="wrap_content"
                     android:text="Nom de l'étudiant"
                     android:textColor="@color/text_primary"
-                    android:textSize="16sp"
+                    android:textSize="15sp"
                     android:textStyle="bold" />
 
                 <TextView
                     android:id="@+id/tvEvaluationStudentNameArabic"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="3dp"
+                    android:layout_marginTop="2dp"
                     android:gravity="end"
                     android:text="اسم الطالب"
                     android:textColor="@color/text_secondary"
                     android:textDirection="rtl"
-                    android:textSize="14sp"
+                    android:textSize="13sp"
                     android:visibility="gone" />
 
                 <TextView
                     android:id="@+id/tvEvaluationStudentMatricule"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="4dp"
+                    android:layout_marginTop="2dp"
                     android:text="Matricule"
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp" />
-
             </LinearLayout>
 
             <TextView
                 android:id="@+id/tvEvaluationStudentScore"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_status_badge"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="5dp"
                 android:text="15,00 / 20"
-                android:textColor="@color/text_primary"
-                android:textSize="16sp"
+                android:textColor="@color/color_success"
+                android:textSize="13sp"
                 android:textStyle="bold" />
-
         </LinearLayout>
 
-        <TextView
-            android:id="@+id/tvEvaluationStudentGroup"
+        <!-- Pastilles : groupe, ordre, statut -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="Groupe : Groupe 1"
-            android:textColor="@color/text_secondary"
-            android:textSize="13sp" />
+            android:layout_marginTop="10dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
-        <TextView
-            android:id="@+id/tvEvaluationStudentStatus"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="Évaluation renseignée"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            <TextView
+                android:id="@+id/tvEvaluationStudentGroup"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_status_badge"
+                android:ellipsize="end"
+                android:maxWidth="150dp"
+                android:maxLines="1"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="Groupe TP 1"
+                android:textColor="@color/primary_dark"
+                android:textSize="12sp"
+                android:textStyle="bold" />
 
+            <TextView
+                android:id="@+id/tvEvaluationStudentOrder"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_status_badge"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="Ordre 3"
+                android:textColor="@color/primary_dark"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvEvaluationStudentStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_status_badge"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="4dp"
+                android:text="Évalué"
+                android:textColor="@color/color_success"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+        </LinearLayout>
     </LinearLayout>
-
 </com.google.android.material.card.MaterialCardView>

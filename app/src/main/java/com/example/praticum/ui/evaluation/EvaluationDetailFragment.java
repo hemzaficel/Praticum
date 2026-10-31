@@ -1,16 +1,176 @@
 package com.example.praticum.ui.evaluation;
-import android.os.Bundle;import android.text.*;import android.view.*;import android.widget.*;import androidx.annotation.*;import androidx.fragment.app.Fragment;import androidx.lifecycle.ViewModelProvider;import androidx.recyclerview.widget.*;import com.example.praticum.R;import com.example.praticum.core.common.*;import com.example.praticum.data.entity.*;import com.google.android.material.button.MaterialButton;import com.google.android.material.textfield.TextInputEditText;import java.util.*;import java.util.Locale;
-public class EvaluationDetailFragment extends Fragment{
- private int sid=-1;private long eid=-1;private String title="",query="";private boolean refresh;private EvaluationViewModel vm;private RecyclerView list;private TextView empty,average,count;private TextInputEditText search;private MaterialButton edit,delete;private EvaluationTeamResultsAdapter adapter;private final List<EvaluationTeamResultsAdapter.TeamItem> all=new ArrayList<>();
- public EvaluationDetailFragment(){} @Nullable public View onCreateView(@NonNull LayoutInflater i,@Nullable ViewGroup c,@Nullable Bundle b){return i.inflate(R.layout.fragment_evaluation_detail,c,false);}
- public void onViewCreated(@NonNull View v,@Nullable Bundle b){super.onViewCreated(v,b);Bundle a=getArguments();if(a!=null){sid=a.getInt("session_id",-1);eid=a.getLong("evaluation_id",-1);title=a.getString("session_title","");}CommonHeaderHelper.configurerEnteteSousFenetre(v,"Détail de l’évaluation",title,requireActivity());vm=new ViewModelProvider(this).get(EvaluationViewModel.class);list=v.findViewById(R.id.rvEvaluationDetailTeams);empty=v.findViewById(R.id.tvEvaluationDetailEmpty);average=v.findViewById(R.id.tvEvaluationDetailAverage);count=v.findViewById(R.id.tvEvaluationDetailStudentCount);search=v.findViewById(R.id.etEvaluationDetailSearch);edit=v.findViewById(R.id.btnEvaluationDetailEdit);delete=v.findViewById(R.id.btnEvaluationDetailDelete);list.setLayoutManager(new LinearLayoutManager(requireContext()));adapter=new EvaluationTeamResultsAdapter();list.setAdapter(adapter);
- edit.setOnClickListener(x->openEdit());delete.setOnClickListener(x->DeletionConfirmationDialog.show(requireContext(),"Supprimer cette évaluation ?","Les résultats et les équipes associés seront supprimés définitivement.",()->vm.deleteEvaluation(sid,eid)));
- search.addTextChangedListener(new TextWatcher(){public void beforeTextChanged(CharSequence s,int st,int c,int af){}public void onTextChanged(CharSequence s,int st,int before,int c){query=s==null?"":s.toString().trim();render();}public void afterTextChanged(Editable e){}});
- vm.getSheetState().observe(getViewLifecycleOwner(),s->{if(s==null||!isAdded())return;boolean found=false;for(Evaluation e:s.getEvaluations())if(e.getId()==eid)found=true;if(!found){Toast.makeText(requireContext(),"Cette évaluation n’existe plus.",Toast.LENGTH_SHORT).show();getParentFragmentManager().popBackStack();return;}build(s);render();});
- vm.getOperationResult().observe(getViewLifecycleOwner(),r->{if(r==null)return;vm.clearOperationResult();if(!r.getMessage().trim().isEmpty())Toast.makeText(requireContext(),r.getMessage(),Toast.LENGTH_SHORT).show();if(r.shouldCloseScreen())getParentFragmentManager().popBackStack();});if(sid<=0||eid<=0){getParentFragmentManager().popBackStack();return;}vm.loadSheet(sid,eid);}
- private void build(EvaluationViewModel.SheetState s){all.clear();int n=0,k=0;double sum=0;for(EvaluationViewModel.EvaluationTeamState t:s.getTeams()){List<EvaluationStudentAdapter.StudentEvaluationItem> rows=new ArrayList<>();for(EvaluationViewModel.StudentWithGroup x:t.getStudents())rows.add(new EvaluationStudentAdapter.StudentEvaluationItem(x,t.getTeam(),t.isEvaluated(),t.getScoreSur20()));n+=rows.size();if(t.isEvaluated()){k+=rows.size();sum+=t.getScoreSur20()*rows.size();}all.add(new EvaluationTeamResultsAdapter.TeamItem(t.getTeam(),rows,t.isEvaluated(),t.getScoreSur20()));}count.setText(n+(n==1?" étudiant":" étudiants"));average.setText(k==0?"— / 20":String.format(Locale.getDefault(),"%.2f / 20",sum/k));}
- private void render(){if(adapter==null)return;List<EvaluationTeamResultsAdapter.TeamItem> out=new ArrayList<>();for(EvaluationTeamResultsAdapter.TeamItem t:all){List<EvaluationStudentAdapter.StudentEvaluationItem> rows=new ArrayList<>();for(EvaluationStudentAdapter.StudentEvaluationItem x:t.students){Student s=x.getStudent();if(query.isEmpty()||norm(s.getFullName()).contains(norm(query))||norm(s.getFullNameArabic()).contains(norm(query))||norm(s.getMatricule()).contains(norm(query)))rows.add(x);}if(!rows.isEmpty()||query.isEmpty())out.add(new EvaluationTeamResultsAdapter.TeamItem(t.team,rows,t.evaluated,t.score));}adapter.submitList(out,!query.isEmpty());boolean no=out.isEmpty();empty.setVisibility(no?View.VISIBLE:View.GONE);list.setVisibility(no?View.GONE:View.VISIBLE);empty.setText(query.isEmpty()?"Aucune équipe n’est associée à cette évaluation.":"Aucun étudiant ne correspond à cette recherche.");}
- private String norm(String s){return s==null?"":s.toLowerCase(Locale.ROOT).trim();}
- private void openEdit(){EvaluationSheetFragment f=new EvaluationSheetFragment();Bundle b=new Bundle();b.putInt("session_id",sid);b.putString("session_title",title);b.putLong("evaluation_id",eid);f.setArguments(b);refresh=true;getParentFragmentManager().beginTransaction().replace(R.id.mainContainer,f).addToBackStack("evaluation_edit_"+eid).commit();}
- public void onResume(){super.onResume();if(refresh&&vm!=null){refresh=false;vm.loadSheet(sid,eid);}} public void onDestroyView(){list=null;empty=null;average=null;count=null;search=null;edit=null;delete=null;adapter=null;super.onDestroyView();}
+
+import android.os.Bundle;
+import android.text.*;
+import android.view.*;
+import android.widget.*;
+
+import androidx.annotation.*;
+import androidx.fragment.app.Fragment;
+import androidx.lifecycle.ViewModelProvider;
+import androidx.recyclerview.widget.*;
+
+import com.example.praticum.R;
+import com.example.praticum.core.common.*;
+import com.example.praticum.data.entity.*;
+import com.google.android.material.button.MaterialButton;
+import com.google.android.material.textfield.TextInputEditText;
+
+import java.util.*;
+import java.util.Locale;
+
+public class EvaluationDetailFragment extends Fragment {
+    private int sid = -1;
+    private long eid = -1;
+    private String title = "", query = "";
+    private boolean refresh;
+    private EvaluationViewModel vm;
+    private RecyclerView list;
+    private TextView empty, average, count;
+    private TextInputEditText search;
+    private MaterialButton edit, delete;
+    private EvaluationTeamResultsAdapter adapter;
+    private final List<EvaluationTeamResultsAdapter.TeamItem> all = new ArrayList<>();
+
+    public EvaluationDetailFragment() {
+    }
+
+    @Nullable
+    public View onCreateView(@NonNull LayoutInflater i, @Nullable ViewGroup c, @Nullable Bundle b) {
+        return i.inflate(R.layout.fragment_evaluation_detail, c, false);
+    }
+
+    public void onViewCreated(@NonNull View v, @Nullable Bundle b) {
+        super.onViewCreated(v, b);
+        Bundle a = getArguments();
+        if (a != null) {
+            sid = a.getInt("session_id", -1);
+            eid = a.getLong("evaluation_id", -1);
+            title = a.getString("session_title", "");
+        }
+        CommonHeaderHelper.configurerEnteteSousFenetre(v, "Détail de l’évaluation", title, requireActivity());
+        vm = new ViewModelProvider(this).get(EvaluationViewModel.class);
+        list = v.findViewById(R.id.rvEvaluationDetailTeams);
+        empty = v.findViewById(R.id.tvEvaluationDetailEmpty);
+        average = v.findViewById(R.id.tvEvaluationDetailAverage);
+        count = v.findViewById(R.id.tvEvaluationDetailStudentCount);
+        search = v.findViewById(R.id.etEvaluationDetailSearch);
+        edit = v.findViewById(R.id.btnEvaluationDetailEdit);
+        delete = v.findViewById(R.id.btnEvaluationDetailDelete);
+        list.setLayoutManager(new LinearLayoutManager(requireContext()));
+        adapter = new EvaluationTeamResultsAdapter();
+        list.setAdapter(adapter);
+        edit.setOnClickListener(x -> openEdit());
+        delete.setOnClickListener(x -> DeletionConfirmationDialog.show(requireContext(), "Supprimer cette évaluation ?", "Les résultats et les équipes associés seront supprimés définitivement.", () -> vm.deleteEvaluation(sid, eid)));
+        search.addTextChangedListener(new TextWatcher() {
+            public void beforeTextChanged(CharSequence s, int st, int c, int af) {
+            }
+
+            public void onTextChanged(CharSequence s, int st, int before, int c) {
+                query = s == null ? "" : s.toString().trim();
+                render();
+            }
+
+            public void afterTextChanged(Editable e) {
+            }
+        });
+        vm.getSheetState().observe(getViewLifecycleOwner(), s -> {
+            if (s == null || !isAdded()) return;
+            boolean found = false;
+            for (Evaluation e : s.getEvaluations()) if (e.getId() == eid) found = true;
+            if (!found) {
+                Toast.makeText(requireContext(), "Cette évaluation n’existe plus.", Toast.LENGTH_SHORT).show();
+                getParentFragmentManager().popBackStack();
+                return;
+            }
+            build(s);
+            render();
+        });
+        vm.getOperationResult().observe(getViewLifecycleOwner(), r -> {
+            if (r == null) return;
+            vm.clearOperationResult();
+            if (!r.getMessage().trim().isEmpty())
+                Toast.makeText(requireContext(), r.getMessage(), Toast.LENGTH_SHORT).show();
+            if (r.shouldCloseScreen()) getParentFragmentManager().popBackStack();
+        });
+        if (sid <= 0 || eid <= 0) {
+            getParentFragmentManager().popBackStack();
+            return;
+        }
+        vm.loadSheet(sid, eid);
+    }
+
+    private void build(EvaluationViewModel.SheetState s) {
+        all.clear();
+        int n = 0, k = 0;
+        double sum = 0;
+        for (EvaluationViewModel.EvaluationTeamState t : s.getTeams()) {
+            List<EvaluationStudentAdapter.StudentEvaluationItem> rows = new ArrayList<>();
+            for (EvaluationViewModel.StudentWithGroup x : t.getStudents())
+                rows.add(new EvaluationStudentAdapter.StudentEvaluationItem(x, t.getTeam(), t.isEvaluated(), t.getScoreSur20()));
+            n += rows.size();
+            if (t.isEvaluated()) {
+                k += rows.size();
+                sum += t.getScoreSur20() * rows.size();
+            }
+            all.add(new EvaluationTeamResultsAdapter.TeamItem(t.getTeam(), rows, t.isEvaluated(), t.getScoreSur20()));
+        }
+        count.setText(n + (n == 1 ? " étudiant" : " étudiants"));
+        average.setText(k == 0 ? "— / 20" : String.format(Locale.getDefault(), "%.2f / 20", sum / k));
+    }
+
+    private void render() {
+        if (adapter == null) return;
+        List<EvaluationTeamResultsAdapter.TeamItem> out = new ArrayList<>();
+        for (EvaluationTeamResultsAdapter.TeamItem t : all) {
+            List<EvaluationStudentAdapter.StudentEvaluationItem> rows = new ArrayList<>();
+            for (EvaluationStudentAdapter.StudentEvaluationItem x : t.students) {
+                Student s = x.getStudent();
+                if (query.isEmpty() || norm(s.getFullName()).contains(norm(query)) || norm(s.getFullNameArabic()).contains(norm(query)) || norm(s.getMatricule()).contains(norm(query)))
+                    rows.add(x);
+            }
+            if (!rows.isEmpty() || query.isEmpty())
+                out.add(new EvaluationTeamResultsAdapter.TeamItem(t.team, rows, t.evaluated, t.score));
+        }
+        adapter.submitList(out, !query.isEmpty());
+        boolean no = out.isEmpty();
+        empty.setVisibility(no ? View.VISIBLE : View.GONE);
+        list.setVisibility(no ? View.GONE : View.VISIBLE);
+        empty.setText(query.isEmpty() ? "Aucune équipe n’est associée à cette évaluation." : "Aucun étudiant ne correspond à cette recherche.");
+    }
+
+    private String norm(String s) {
+        return s == null ? "" : s.toLowerCase(Locale.ROOT).trim();
+    }
+
+    private void openEdit() {
+        EvaluationSheetFragment f = new EvaluationSheetFragment();
+        Bundle b = new Bundle();
+        b.putInt("session_id", sid);
+        b.putString("session_title", title);
+        b.putLong("evaluation_id", eid);
+        f.setArguments(b);
+        refresh = true;
+        getParentFragmentManager().beginTransaction().replace(R.id.mainContainer, f).addToBackStack("evaluation_edit_" + eid).commit();
+    }
+
+    public void onResume() {
+        super.onResume();
+        if (refresh && vm != null) {
+            refresh = false;
+            vm.loadSheet(sid, eid);
+        }
+    }
+
+    public void onDestroyView() {
+        list = null;
+        empty = null;
+        average = null;
+        count = null;
+        search = null;
+        edit = null;
+        delete = null;
+        adapter = null;
+        super.onDestroyView();
+    }
 }

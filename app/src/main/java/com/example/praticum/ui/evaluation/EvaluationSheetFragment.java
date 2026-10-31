@@ -101,6 +101,12 @@ public class EvaluationSheetFragment extends Fragment {
         long requestedEvaluationId = args == null
                 ? -1 : args.getLong("evaluation_id", -1);
 
+        // Ouverture directe sur l'équipe choisie depuis l'historique (facultatif).
+        long requestedTeamId = args == null ? -1 : args.getLong("team_id", -1);
+        if (requestedTeamId > 0) {
+            currentTeamId = requestedTeamId;
+        }
+
         if (sessionId <= 0) {
             showMessage("Séance invalide.");
             getParentFragmentManager().popBackStack();
@@ -351,16 +357,16 @@ public class EvaluationSheetFragment extends Fragment {
                     return;
                 }
                 requireActivity()
-                            .getSupportFragmentManager()
-                            .beginTransaction()
-                            .replace(
-                                    R.id.mainContainer,
-                                    EnrollmentsFragment.newInstanceForSelection(
-                                            state.getModuleLevelId(),
-                                            state.getModuleSpecializationId())
-                            )
-                            .addToBackStack("evaluation_choose_enrollment")
-                            .commit();
+                        .getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(
+                                R.id.mainContainer,
+                                EnrollmentsFragment.newInstanceForSelection(
+                                        state.getModuleLevelId(),
+                                        state.getModuleSpecializationId())
+                        )
+                        .addToBackStack("evaluation_choose_enrollment")
+                        .commit();
             });
         }
 
