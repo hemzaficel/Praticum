@@ -25,22 +25,34 @@ import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
 import com.example.praticum.core.common.FilterSortFragment;
 import com.example.praticum.data.entity.Student;
-import com.example.praticum.data.entity.StudentGroup;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
 
 public class StudentsFragment extends Fragment
         implements FilterSortFragment.OnFilterSortListener {
+
+    public static final String RESULT_KEY = "enrollment_student_result";
+    public static final String RESULT_STUDENT_ID = "student_id";
+    public static final String RESULT_STUDENT_LABEL = "student_label";
+    private static final String ARG_SELECTION_MODE = "selection_mode";
+
+    public static StudentsFragment newInstanceForSelection() {
+        StudentsFragment fragment = new StudentsFragment();
+        Bundle args = new Bundle();
+        args.putBoolean(ARG_SELECTION_MODE, true);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    private boolean isSelectionMode() {
+        return getArguments() != null && getArguments().getBoolean(ARG_SELECTION_MODE, false);
+    }
 
     private static final String FILTRE_TOUS = "Tous";
 
@@ -57,11 +69,9 @@ public class StudentsFragment extends Fragment
 
     private List<Student> allStudents = new ArrayList<>();
     private final List<Student> filteredStudents = new ArrayList<>();
-    private final Map<Integer, String> codesGroupes = new HashMap<>();
 
     private boolean sortAscending = true;
     private String sortBy = "Nom";
-    private String filterBy = FILTRE_TOUS;
 
     public StudentsFragment() {
         // Constructeur obligatoire.
@@ -111,15 +121,15 @@ public class StudentsFragment extends Fragment
                 rootView.findViewById(R.id.filterSortContainer);
 
         if (searchLayout != null) {
-            searchLayout.setVisibility(View.GONE);
+            searchLayout.setVisibility(isSelectionMode() ? View.VISIBLE : View.GONE);
         }
     }
 
     private void initializeHeader() {
         CommonHeaderHelper.configurerEntetePrincipal(
                 rootView,
-                "Étudiants",
-                "Gestion des étudiants",
+                isSelectionMode() ? "Choisir un étudiant" : "Étudiants",
+                isSelectionMode() ? "Rechercher puis sélectionner un étudiant" : "Gestion des étudiants",
                 v -> {
                     if (getActivity() instanceof MainActivity) {
                         ((MainActivity) requireActivity())
@@ -141,31 +151,12 @@ public class StudentsFragment extends Fragment
                 new LinearLayoutManager(requireContext())
         );
 
-        studentAdapter = new StudentAdapter(this::openStudentDetail);
+        studentAdapter = new StudentAdapter(this::onStudentClicked);
 
         rvStudents.setAdapter(studentAdapter);
     }
 
     private void observeData() {
-        // Les groupes sont publiés avant les étudiants.
-        viewModel.getGroups().observe(
-                getViewLifecycleOwner(),
-                groupes -> {
-                    codesGroupes.clear();
-
-                    if (groupes != null) {
-                        for (StudentGroup groupe : groupes) {
-                            codesGroupes.put(
-                                    groupe.getId(),
-                                    safe(groupe.getCode())
-                            );
-                        }
-                    }
-
-                    filterStudents(currentQuery());
-                }
-        );
-
         viewModel.getStudents().observe(
                 getViewLifecycleOwner(),
                 etudiants -> {
@@ -268,9 +259,12 @@ public class StudentsFragment extends Fragment
 
     private void configureAddButton() {
         View addButton = rootView.findViewById(R.id.btnAddStudent);
-
         if (addButton != null) {
-            addButton.setOnClickListener(v -> openStudentForm());
+            if (isSelectionMode()) {
+                addButton.setVisibility(View.GONE);
+            } else {
+                addButton.setOnClickListener(v -> openStudentForm());
+            }
         }
     }
 
@@ -292,6 +286,10 @@ public class StudentsFragment extends Fragment
         View sortButton = rootView.findViewById(R.id.btnSortStudents);
 
         if (sortButton != null) {
+            if (isSelectionMode()) {
+                sortButton.setVisibility(View.GONE);
+                return;
+            }
             sortButton.setOnClickListener(v -> {
                 if (filterSortContainer == null) {
                     return;
@@ -311,31 +309,13 @@ public class StudentsFragment extends Fragment
             return;
         }
 
-        // Groupes auxquels appartient au moins un étudiant.
-        Set<String> groupes = new LinkedHashSet<>();
-        groupes.add(FILTRE_TOUS);
-
-        for (Student student : allStudents) {
-            String groupe = groupCode(student).trim();
-
-            if (!groupe.isEmpty()) {
-                groupes.add(groupe);
-            }
-        }
-
         filterSortContainer.setVisibility(View.VISIBLE);
 
         FilterSortFragment fragment =
                 FilterSortFragment.newInstance(
-                        new String[]{
-                                "Nom",
-                                "Matricule",
-                                "Groupe",
-                                "Ordre du groupe"
-                        },
-                        groupes.toArray(new String[0])
+                        new String[]{"Nom", "Matricule"},
+                        new String[]{FILTRE_TOUS}
                 );
-
         getChildFragmentManager()
                 .beginTransaction()
                 .replace(R.id.filterSortContainer, fragment)
@@ -368,9 +348,6 @@ public class StudentsFragment extends Fragment
 
         sortBy = selectedSortBy == null ? "Nom" : selectedSortBy;
         sortAscending = ascending;
-        filterBy = selectedFilterBy == null
-                ? FILTRE_TOUS
-                : selectedFilterBy;
 
         fermerPanneauTri();
         filterStudents(currentQuery());
@@ -397,7 +374,6 @@ public class StudentsFragment extends Fragment
             String fullName = safe(student.getFullName());
             String fullNameArabic = safe(student.getFullNameArabic());
             String matricule = safe(student.getMatricule());
-            String group = groupCode(student);
             String email = safe(student.getEmail());
 
             boolean matchesSearch =
@@ -406,16 +382,10 @@ public class StudentsFragment extends Fragment
                             || fullNameArabic.contains(trimmedQuery)
                             || matricule.toLowerCase(Locale.ROOT)
                             .contains(normalizedQuery)
-                            || group.toLowerCase(Locale.ROOT)
-                            .contains(normalizedQuery)
                             || email.toLowerCase(Locale.ROOT)
                             .contains(normalizedQuery);
 
-            boolean matchesGroup =
-                    filterBy.equals(FILTRE_TOUS)
-                            || group.equalsIgnoreCase(filterBy);
-
-            if (matchesSearch && matchesGroup) {
+            if (matchesSearch) {
                 filteredStudents.add(student);
             }
         }
@@ -428,22 +398,6 @@ public class StudentsFragment extends Fragment
                         student -> safe(student.getMatricule()),
                         String.CASE_INSENSITIVE_ORDER
                 );
-                break;
-
-            case "Groupe":
-                comparator = Comparator.comparing(
-                        this::groupCode,
-                        String.CASE_INSENSITIVE_ORDER
-                );
-                break;
-
-            case "Ordre du groupe":
-                comparator = Comparator
-                        .comparing(
-                                (Student student) -> groupCode(student),
-                                String.CASE_INSENSITIVE_ORDER
-                        )
-                        .thenComparingInt(Student::getGroupOrder);
                 break;
 
             case "Nom":
@@ -461,10 +415,7 @@ public class StudentsFragment extends Fragment
 
         Collections.sort(filteredStudents, comparator);
 
-        studentAdapter.remplacerEtudiants(
-                filteredStudents,
-                codesGroupes
-        );
+        studentAdapter.remplacerEtudiants(filteredStudents);
 
         int count = filteredStudents.size();
 
@@ -477,13 +428,22 @@ public class StudentsFragment extends Fragment
         }
     }
 
-    private String groupCode(Student student) {
-        String code = codesGroupes.get(student.getGroupId());
-        return code == null ? "" : code;
-    }
-
     private String safe(@Nullable String value) {
         return value == null ? "" : value;
+    }
+
+    private void onStudentClicked(Student student) {
+        if (!isSelectionMode()) {
+            openStudentDetail(student);
+            return;
+        }
+        Bundle result = new Bundle();
+        result.putString(RESULT_STUDENT_ID, student.getStudentId());
+        String matricule = student.getMatricule();
+        result.putString(RESULT_STUDENT_LABEL,
+                student.getFullName() + (matricule == null || matricule.trim().isEmpty() ? "" : " · " + matricule));
+        getParentFragmentManager().setFragmentResult(RESULT_KEY, result);
+        getParentFragmentManager().popBackStack();
     }
 
     private void openStudentDetail(Student student) {
@@ -551,3 +511,5 @@ public class StudentsFragment extends Fragment
         studentAdapter = null;
     }
 }
+
+

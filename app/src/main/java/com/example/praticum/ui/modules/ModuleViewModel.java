@@ -8,20 +8,28 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.praticum.data.database.DatabaseProvider;
+import com.example.praticum.data.database.AppDatabase;
 import com.example.praticum.data.entity.Course;
+import com.example.praticum.data.entity.Specialization;
+import com.example.praticum.R;
 import com.example.praticum.data.repository.ModuleRepository;
 
 import java.util.List;
+import java.util.UUID;
+import java.util.Locale;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class ModuleViewModel extends AndroidViewModel {
 
     private final ModuleRepository repository;
+    private final AppDatabase database;
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor();
 
     private final MutableLiveData<List<Course>> modules =
+            new MutableLiveData<>();
+    private final MutableLiveData<List<Specialization>> specializations =
             new MutableLiveData<>();
     private final MutableLiveData<String> error =
             new MutableLiveData<>();
@@ -31,15 +39,39 @@ public class ModuleViewModel extends AndroidViewModel {
     public ModuleViewModel(@NonNull Application application) {
         super(application);
 
-        repository = new ModuleRepository(
-                DatabaseProvider.getDatabase(application).moduleDao()
-        );
+        database = DatabaseProvider.getDatabase(application);
+        repository = new ModuleRepository(database.moduleDao());
 
         loadAll();
+        loadSpecializations();
     }
 
     public LiveData<List<Course>> getModules() {
         return modules;
+    }
+
+    public LiveData<List<Specialization>> getSpecializations() { return specializations; }
+
+    public void loadSpecializations() {
+        executor.execute(() -> {
+            try {
+                String[] configuredNames = getApplication().getResources()
+                        .getStringArray(R.array.specializations);
+                database.runInTransaction(() -> {
+                    for (String name : configuredNames) {
+                        if (database.specializationDao().getByName(name) == null) {
+                            String code = "SPEC-" + UUID.randomUUID()
+                                    .toString().substring(0, 8).toUpperCase(Locale.ROOT);
+                            database.specializationDao().insert(
+                                    new Specialization(code, name, null));
+                        }
+                    }
+                });
+                specializations.postValue(database.specializationDao().getAll());
+            } catch (Exception e) {
+                error.postValue(getErrorMessage(e));
+            }
+        });
     }
 
     public LiveData<String> getError() {

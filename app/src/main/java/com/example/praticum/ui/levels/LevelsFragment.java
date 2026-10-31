@@ -20,6 +20,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.praticum.MainActivity;
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.DeletionConfirmationDialog;
 import com.example.praticum.data.entity.Level;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -329,17 +330,17 @@ public class LevelsFragment extends Fragment {
 
     private void confirmerSuppression(Level level) {
 
-        String message = "Voulez-vous vraiment supprimer le niveau « "
-                + level.getName() + " » ?";
+        if (level == null) {
+            return;
+        }
 
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Supprimer le niveau")
-                .setMessage(message)
-                .setNegativeButton("Annuler", null)
-                .setPositiveButton("Supprimer", (dialog, which) ->
-                        viewModel.deleteLevel(level)
-                )
-                .show();
+        DeletionConfirmationDialog.show(
+                requireContext(),
+                "Supprimer le niveau ?",
+                "Voulez-vous vraiment supprimer le niveau « "
+                        + level.getName() + " » ?",
+                () -> viewModel.deleteLevel(level)
+        );
     }
 
     private String valeur(@Nullable String texte) {

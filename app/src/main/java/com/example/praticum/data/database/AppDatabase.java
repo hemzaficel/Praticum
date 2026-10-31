@@ -4,6 +4,9 @@ import androidx.room.Database;
 import androidx.room.RoomDatabase;
 
 import com.example.praticum.data.dao.AcademicYearDao;
+import com.example.praticum.data.dao.DashboardStatsDao;
+import com.example.praticum.data.dao.EnrollmentDao;
+import com.example.praticum.data.dao.SpecializationDao;
 import com.example.praticum.data.dao.LevelDao;
 import com.example.praticum.data.dao.ModuleDao;
 import com.example.praticum.data.dao.StudentGroupDao;
@@ -18,6 +21,8 @@ import com.example.praticum.data.dao.EvaluationTeamMemberDao;
 import com.example.praticum.data.dao.EvaluationScoreDao;
 
 import com.example.praticum.data.entity.AcademicYear;
+import com.example.praticum.data.entity.Enrollment;
+import com.example.praticum.data.entity.Specialization;
 import com.example.praticum.data.entity.Level;
 import com.example.praticum.data.entity.Course;
 import com.example.praticum.data.entity.StudentGroup;
@@ -34,6 +39,8 @@ import com.example.praticum.data.entity.EvaluationScore;
 @Database(
         entities = {
                 AcademicYear.class,
+                Specialization.class,
+                Enrollment.class,
                 Level.class,
                 Course.class,
                 StudentGroup.class,
@@ -47,12 +54,18 @@ import com.example.praticum.data.entity.EvaluationScore;
                 EvaluationTeamMember.class,
                 EvaluationScore.class
         },
-        version = 1,
+        version = 6,
         exportSchema = false
 )
 public abstract class AppDatabase extends RoomDatabase {
 
     public abstract AcademicYearDao academicYearDao();
+
+    public abstract DashboardStatsDao dashboardStatsDao();
+
+    public abstract EnrollmentDao enrollmentDao();
+
+    public abstract SpecializationDao specializationDao();
 
     public abstract LevelDao levelDao();
 
@@ -78,3 +91,6 @@ public abstract class AppDatabase extends RoomDatabase {
 
     public abstract EvaluationScoreDao evaluationScoreDao();
 }
+
+
+

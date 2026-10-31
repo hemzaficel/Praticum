@@ -20,7 +20,7 @@ public final class DatabaseProvider {
                             context.getApplicationContext(),
                             AppDatabase.class,
                             "practicum_database"
-                    ).build();
+                    ).fallbackToDestructiveMigration().build();
                 }
             }
         }
@@ -28,3 +28,4 @@ public final class DatabaseProvider {
         return instance;
     }
 }
+

@@ -190,7 +190,7 @@ public class GroupFormFragment extends Fragment {
 
     private void configurerListes() {
 
-        // Matières
+        // Spécialités
         ArrayAdapter<String> adapter = new ArrayAdapter<>(
                 requireContext(),
                 android.R.layout.simple_dropdown_item_1line,

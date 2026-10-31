@@ -15,6 +15,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.DeletionConfirmationDialog;
 import com.example.praticum.data.entity.Course;
 import com.example.praticum.data.entity.Level;
 import com.example.praticum.ui.levels.LevelViewModel;
@@ -101,8 +102,23 @@ public class ModuleDetailFragment extends Fragment {
                 }
         );
 
+        viewModel.getSpecializations().observe(
+                getViewLifecycleOwner(),
+                values -> {
+                    if (values == null || module == null || vueFragment == null) return;
+                    for (com.example.praticum.data.entity.Specialization item : values) {
+                        if (item.getId() == module.getSpecializationId()) {
+                            definirTexte(vueFragment, R.id.tvModuleDetailSpecialization, item.getName());
+                            return;
+                        }
+                    }
+                    definirTexte(vueFragment, R.id.tvModuleDetailSpecialization, "Spécialité introuvable");
+                }
+        );
+
         levelViewModel.loadLevels();
         viewModel.loadAll();
+        viewModel.loadSpecializations();
     }
 
     private void observerModules(long moduleId) {
@@ -318,21 +334,13 @@ public class ModuleDetailFragment extends Fragment {
             return;
         }
 
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Supprimer le module")
-                .setMessage(
-                        "Voulez-vous vraiment supprimer le module « "
-                                + module.getName() + " » ?"
-                )
-                .setNegativeButton(
-                        "Annuler",
-                        (dialog, which) -> dialog.dismiss()
-                )
-                .setPositiveButton(
-                        "Supprimer",
-                        (dialog, which) -> supprimerModule()
-                )
-                .show();
+        DeletionConfirmationDialog.show(
+                requireContext(),
+                "Supprimer le module ?",
+                "Voulez-vous vraiment supprimer le module « "
+                        + module.getName() + " » ?",
+                this::supprimerModule
+        );
     }
 
     private void supprimerModule() {

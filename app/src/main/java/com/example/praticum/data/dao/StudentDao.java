@@ -29,11 +29,14 @@ public interface StudentDao {
     @Query("SELECT * FROM student WHERE student_id = :studentId LIMIT 1")
     Student getById(String studentId);
 
-    @Query("SELECT * FROM student WHERE group_id = :groupId ORDER BY group_order ASC")
+    @Query("SELECT s.* FROM student s INNER JOIN enrollment e ON e.student_id = s.student_id WHERE e.group_id = :groupId ORDER BY e.group_order ASC")
     List<Student> getByGroupId(long groupId);
 
     @Query("SELECT * FROM student WHERE matricule = :matricule LIMIT 1")
     Student getByMatricule(String matricule);
+
+    @Query("SELECT * FROM student WHERE email = :email COLLATE NOCASE LIMIT 1")
+    Student getByEmail(String email);
 
     @Query("SELECT COUNT(*) FROM student WHERE matricule = :matricule")
     int countByMatricule(String matricule);
@@ -41,19 +44,14 @@ public interface StudentDao {
     @Query("SELECT COUNT(*) FROM student WHERE matricule = :matricule AND student_id != :excludeStudentId")
     int countByMatriculeExcludingId(String matricule, String excludeStudentId);
 
-    @Query("SELECT * FROM student WHERE group_id = :groupId AND (last_name LIKE '%' || :query || '%' OR first_name LIKE '%' || :query || '%' OR matricule LIKE '%' || :query || '%') ORDER BY group_order ASC")
+    @Query("SELECT s.* FROM student s INNER JOIN enrollment e ON e.student_id = s.student_id WHERE e.group_id = :groupId AND (s.last_name LIKE '%' || :query || '%' OR s.first_name LIKE '%' || :query || '%' OR s.matricule LIKE '%' || :query || '%') ORDER BY e.group_order ASC")
     List<Student> searchInGroup(long groupId, String query);
 
     @Query("SELECT * FROM student WHERE last_name LIKE '%' || :query || '%' OR first_name LIKE '%' || :query || '%' OR matricule LIKE '%' || :query || '%' ORDER BY last_name COLLATE NOCASE, first_name COLLATE NOCASE")
     List<Student> search(String query);
 
-    @Query("SELECT MAX(group_order) FROM student WHERE group_id = :groupId")
-    Integer getMaxGroupOrder(long groupId);
-
-    @Query("SELECT COUNT(*) FROM student WHERE group_id = :groupId")
-    int countByGroupId(long groupId);
-
     @Query("SELECT COUNT(*) FROM student")
     int countAll();
 
 }
+

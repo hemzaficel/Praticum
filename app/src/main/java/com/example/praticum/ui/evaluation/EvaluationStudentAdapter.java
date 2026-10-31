@@ -63,6 +63,11 @@ public class EvaluationStudentAdapter
 
         holder.tvName.setText(student.getFullName());
 
+        String arabicName = student.getFullNameArabic();
+        holder.tvArabicName.setText(arabicName == null ? "" : arabicName);
+        holder.tvArabicName.setVisibility(arabicName == null || arabicName.trim().isEmpty()
+                ? View.GONE : View.VISIBLE);
+
         String matricule = student.getMatricule();
 
         holder.tvMatricule.setText(
@@ -72,7 +77,7 @@ public class EvaluationStudentAdapter
         );
 
         holder.tvGroup.setText(
-                "Groupe : " + item.getTeam().getName()
+                "Équipe : " + item.getTeam().getName()
         );
 
         if (item.isEvaluated()) {
@@ -100,6 +105,7 @@ public class EvaluationStudentAdapter
     static class StudentViewHolder extends RecyclerView.ViewHolder {
 
         final TextView tvName;
+        final TextView tvArabicName;
         final TextView tvMatricule;
         final TextView tvScore;
         final TextView tvGroup;
@@ -110,6 +116,10 @@ public class EvaluationStudentAdapter
 
             tvName = itemView.findViewById(
                     R.id.tvEvaluationStudentName
+            );
+
+            tvArabicName = itemView.findViewById(
+                    R.id.tvEvaluationStudentNameArabic
             );
 
             tvMatricule = itemView.findViewById(

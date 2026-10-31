@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
 import com.example.praticum.data.entity.SessionCriterion;
+import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.textfield.TextInputLayout;
 
 import java.util.ArrayList;
@@ -323,7 +324,18 @@ public class SessionCriterionAdapter
                 int currentPosition = getBindingAdapterPosition();
 
                 if (currentPosition != RecyclerView.NO_POSITION) {
-                    removeCriterion(currentPosition);
+                    SessionCriterion critereSelectionne = criteria.get(currentPosition);
+                    new MaterialAlertDialogBuilder(itemView.getContext())
+                            .setTitle("Supprimer le critère ?")
+                            .setMessage("Ce critère d’évaluation sera retiré de la séance.")
+                            .setNegativeButton("Annuler", null)
+                            .setPositiveButton("Supprimer", (dialog, which) -> {
+                                int position = criteria.indexOf(critereSelectionne);
+                                if (position != -1) {
+                                    removeCriterion(position);
+                                }
+                            })
+                            .show();
                 }
             });
         }

@@ -7,7 +7,7 @@
     android:layout_height="wrap_content"
     android:layout_marginBottom="12dp"
     app:cardBackgroundColor="@color/white"
-    app:cardCornerRadius="16dp"
+    app:cardCornerRadius="18dp"
     app:cardElevation="1dp"
     app:strokeColor="@color/color_outline"
     app:strokeWidth="1dp">
@@ -18,7 +18,6 @@
         android:orientation="vertical"
         android:padding="16dp">
 
-        <!-- Type d'activité et statut -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -50,26 +49,23 @@
                 android:textColor="@color/primary_dark"
                 android:textSize="12sp"
                 android:textStyle="bold" />
-
         </LinearLayout>
 
-        <!-- Intitulé de l'activité -->
         <TextView
             android:id="@+id/tvSessionTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
+            android:layout_marginTop="13dp"
             android:text="Initiation aux circuits électriques"
             android:textColor="@color/text_primary"
-            android:textSize="17sp"
+            android:textSize="18sp"
             android:textStyle="bold" />
 
-        <!-- Module associé -->
         <LinearLayout
             android:id="@+id/layoutSessionModule"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
+            android:layout_marginTop="9dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
@@ -78,7 +74,7 @@
                 android:layout_height="18dp"
                 android:contentDescription="@null"
                 android:src="@drawable/ic_book"
-                app:tint="@color/text_secondary" />
+                app:tint="@color/primary" />
 
             <TextView
                 android:id="@+id/tvSessionModule"
@@ -86,63 +82,78 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="8dp"
                 android:layout_weight="1"
-                android:text="Électronique"
+                android:text="Module"
                 android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
-
+                android:textSize="13sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
-        <!-- Description et consignes -->
         <TextView
             android:id="@+id/tvSessionDescription"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
+            android:layout_marginTop="9dp"
+            android:ellipsize="end"
+            android:lineSpacingExtra="2dp"
+            android:maxLines="3"
             android:text="Description de l'activité ou consignes pédagogiques."
             android:textColor="@color/text_secondary"
-            android:textSize="14sp"
-            android:maxLines="3"
-            android:ellipsize="end" />
+            android:textSize="14sp" />
 
-        <!-- Séparateur -->
         <View
             android:layout_width="match_parent"
             android:layout_height="1dp"
-            android:layout_marginTop="14dp"
+            android:layout_marginTop="15dp"
             android:layout_marginBottom="12dp"
-            android:background="@color/color_outline" />
+            android:background="@color/color_divider" />
 
-        <!-- Nombre de critères et barème total -->
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="ÉVALUATION"
+            android:textColor="@color/text_secondary"
+            android:textSize="10sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08" />
+
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:gravity="center_vertical"
+            android:layout_marginTop="8dp"
             android:orientation="horizontal">
 
             <TextView
                 android:id="@+id/tvSessionCriteriaCount"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
+                android:layout_marginEnd="6dp"
                 android:layout_weight="1"
+                android:background="@color/screen_background"
                 android:drawablePadding="6dp"
-                android:text="0 critère d'évaluation"
-                android:textColor="@color/text_secondary"
-                android:textSize="12sp" />
-
-            <TextView
-                android:id="@+id/tvSessionMaxScore"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:background="@drawable/bg_menu_selected"
+                android:gravity="center_vertical"
+                android:minHeight="42dp"
                 android:paddingHorizontal="10dp"
-                android:paddingVertical="6dp"
-                android:text="Total : 20 points"
-                android:textColor="@color/primary_dark"
+                android:paddingVertical="8dp"
+                android:text="Critères d’évaluation : —"
+                android:textColor="@color/text_primary"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
+            <TextView
+                android:id="@+id/tvSessionMaxScore"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:layout_weight="1"
+                android:background="@color/color_info_container"
+                android:gravity="center_vertical"
+                android:minHeight="42dp"
+                android:paddingHorizontal="10dp"
+                android:paddingVertical="8dp"
+                android:text="Barème : —"
+                android:textColor="@color/primary_dark"
+                android:textSize="12sp"
+                android:textStyle="bold" />
         </LinearLayout>
-
     </LinearLayout>
-
 </com.google.android.material.card.MaterialCardView>

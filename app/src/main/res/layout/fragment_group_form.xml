@@ -205,7 +205,7 @@
 
                     </com.google.android.material.textfield.TextInputLayout>
 
-                    <!-- Matière -->
+                    <!-- Spécialité -->
                     <com.google.android.material.textfield.TextInputLayout
                         android:id="@+id/tilGroupSubject"
                         style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"

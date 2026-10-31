@@ -97,6 +97,11 @@ public class ModuleRepository {
                     "Un niveau valide doit être sélectionné.");
         }
 
+        if (module.getSpecializationId() <= 0) {
+            throw new IllegalArgumentException(
+                    "Une spécialité valide doit être sélectionnée.");
+        }
+
         if (module.getSemester() != 1
                 && module.getSemester() != 2) {
             throw new IllegalArgumentException(

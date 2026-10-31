@@ -15,10 +15,11 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.DeletionConfirmationDialog;
 import com.example.praticum.data.entity.Session;
 import com.example.praticum.ui.attendance.AttendanceSheetFragment;
 import com.example.praticum.ui.evaluation.EvaluationSheetFragment;
-import com.example.praticum.ui.evaluation.SessionEvaluationsFragment;
+import com.example.praticum.ui.evaluation.EvaluationHistoryFragment;
 
 public class SessionDetailFragment extends Fragment {
 
@@ -35,6 +36,8 @@ public class SessionDetailFragment extends Fragment {
     private TextView descriptionView;
     private TextView attendanceSummaryView;
     private TextView tvSessionDetailCriteriaCount;
+    private TextView tvSessionDetailMaxScore;
+    private TextView tvSessionDetailCriteriaList;
 
     private int sessionId = -1;
     private boolean alreadyResumed = false;
@@ -93,9 +96,9 @@ public class SessionDetailFragment extends Fragment {
                 R.id.tvSessionDetailAttendanceSummary
         );
 
-        tvSessionDetailCriteriaCount = view.findViewById(
-                R.id.tvSessionDetailCriteriaCount
-        );
+        tvSessionDetailCriteriaCount = view.findViewById(R.id.tvSessionDetailCriteriaCount);
+        tvSessionDetailMaxScore = view.findViewById(R.id.tvSessionDetailMaxScore);
+        tvSessionDetailCriteriaList = view.findViewById(R.id.tvSessionDetailCriteriaList);
 
         Bundle args = getArguments();
 
@@ -164,12 +167,7 @@ public class SessionDetailFragment extends Fragment {
             return;
         }
 
-        CommonHeaderHelper.configurerEnteteSousFenetre(
-                rootView,
-                "Détails de la séance",
-                sessionDetails.getSession().getTitle(),
-                requireActivity()
-        );
+        CommonHeaderHelper.configurerEnteteSousFenetre(rootView, "Détails de la séance", "", requireActivity());
     }
 
     private void configurerActions(@NonNull View view) {
@@ -229,58 +227,47 @@ public class SessionDetailFragment extends Fragment {
     }
 
     private void afficherSeance() {
-        if (sessionDetails == null) {
-            return;
-        }
-
+        if (sessionDetails == null) return;
         Session session = sessionDetails.getSession();
+        titleView.setText(valeurOu(session.getTitle(), "Séance sans titre"));
+        typeView.setText(valeurOu(session.getActivityType(), "Type non renseigné"));
 
-        titleView.setText(
-                valeurOu(session.getTitle(), "Séance sans titre")
-        );
+        StringBuilder module = new StringBuilder(valeurOu(sessionDetails.getModuleName(), "Module non renseigné"));
+        if (!sessionDetails.getModuleCode().trim().isEmpty()) module.append("\nCode : ").append(sessionDetails.getModuleCode());
+        if (!sessionDetails.getLevelName().trim().isEmpty()) module.append("\nNiveau : ").append(sessionDetails.getLevelName());
+        if (!sessionDetails.getSpecializationName().trim().isEmpty()) module.append("\nSpécialité : ").append(sessionDetails.getSpecializationName());
+        if (sessionDetails.getSemester() > 0) module.append("\nSemestre ").append(sessionDetails.getSemester());
+        if (sessionDetails.getCoefficient() > 0) module.append(" · Coefficient ").append(sessionDetails.getCoefficient());
+        moduleView.setText(module.toString());
 
-        typeView.setText(
-                valeurOu(
-                        session.getActivityType(),
-                        "Type non renseigné"
-                )
-        );
-
-        moduleView.setText(
-                valeurOu(
-                        sessionDetails.getModuleName(),
-                        "Module non renseigné"
-                )
-        );
-
-        statusView.setText(
-                session.isArchived()
-                        ? "Archivée"
-                        : valeurOu(session.getStatus(), "À venir")
-        );
-
-        descriptionView.setText(
-                valeurOu(
-                        session.getDescription(),
-                        "Aucune description renseignée."
-                )
-        );
-
+        statusView.setText(session.isArchived() ? "Archivée · " + valeurOu(session.getStatus(), "Statut inconnu")
+                : valeurOu(session.getStatus(), "Statut non renseigné"));
+        descriptionView.setText(valeurOu(session.getDescription(), "Aucune description renseignée."));
         if (attendanceSummaryView != null) {
-            attendanceSummaryView.setText(
-                    "Suivez les présences des étudiants pour cette séance."
-            );
+            attendanceSummaryView.setText("Enregistrez ici les présences, absences et retards associés à cette séance.");
         }
 
-        if (tvSessionDetailCriteriaCount != null) {
-            tvSessionDetailCriteriaCount.setText(
-                    String.valueOf(
-                            sessionDetails.getCriteria().size()
-                    )
-            );
+        java.util.List<com.example.praticum.data.entity.SessionCriterion> criteria = sessionDetails.getCriteria();
+        double maxTotal = 0;
+        StringBuilder criterionLines = new StringBuilder();
+        for (com.example.praticum.data.entity.SessionCriterion criterion : criteria) {
+            maxTotal += criterion.getMaxScore();
+            if (criterionLines.length() > 0) criterionLines.append("\n\n");
+            criterionLines.append("• ").append(criterion.getTitle()).append(" — ")
+                    .append(criterion.getMaxScore()).append(" points");
+            if (criterion.getDescription() != null && !criterion.getDescription().trim().isEmpty()) {
+                criterionLines.append("\n  ").append(criterion.getDescription().trim());
+            }
         }
+        if (tvSessionDetailCriteriaCount != null) tvSessionDetailCriteriaCount.setText(criteria.size()
+                + (criteria.size() == 1 ? " critère configuré" : " critères configurés"));
+        if (tvSessionDetailMaxScore != null) {
+            tvSessionDetailMaxScore.setText(String.format(java.util.Locale.getDefault(), "%.2f points", maxTotal));
+            tvSessionDetailMaxScore.setVisibility(criteria.isEmpty() ? View.GONE : View.VISIBLE);
+        }
+        if (tvSessionDetailCriteriaList != null) tvSessionDetailCriteriaList.setText(criteria.isEmpty()
+                ? "Aucun critère d’évaluation configuré." : criterionLines.toString());
     }
-
     private String valeurOu(String value, String fallback) {
         return value == null || value.trim().isEmpty()
                 ? fallback
@@ -346,8 +333,8 @@ public class SessionDetailFragment extends Fragment {
             return;
         }
 
-        SessionEvaluationsFragment fragment =
-                new SessionEvaluationsFragment();
+        EvaluationHistoryFragment fragment =
+                new EvaluationHistoryFragment();
 
         Bundle args = new Bundle();
         args.putInt("session_id", session.getId());
@@ -391,21 +378,12 @@ public class SessionDetailFragment extends Fragment {
             return;
         }
 
-        new AlertDialog.Builder(requireContext())
-                .setTitle("Supprimer la séance")
-                .setMessage(
-                        "Voulez-vous vraiment supprimer cette séance ?"
-                )
-                .setNegativeButton(
-                        "Annuler",
-                        (dialog, which) -> dialog.dismiss()
-                )
-                .setPositiveButton(
-                        "Supprimer",
-                        (dialog, which) ->
-                                viewModel.deleteSession(session.getId())
-                )
-                .show();
+        DeletionConfirmationDialog.show(
+                requireContext(),
+                "Supprimer la séance ?",
+                "Voulez-vous vraiment supprimer cette séance ?",
+                () -> viewModel.deleteSession(session.getId())
+        );
     }
 
     private void archiveSession() {
@@ -487,6 +465,8 @@ public class SessionDetailFragment extends Fragment {
         descriptionView = null;
         attendanceSummaryView = null;
         tvSessionDetailCriteriaCount = null;
+        tvSessionDetailMaxScore = null;
+        tvSessionDetailCriteriaList = null;
 
         super.onDestroyView();
     }

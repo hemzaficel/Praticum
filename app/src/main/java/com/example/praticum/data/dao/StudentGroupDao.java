@@ -48,11 +48,20 @@ public interface StudentGroupDao {
             long excludeId
     );
 
-    @Query("SELECT COUNT(*) FROM student WHERE group_id = :groupId")
+    @Query("SELECT * FROM student_group WHERE code = :code COLLATE NOCASE AND academic_year_id = :academicYearId AND level_id IS :levelId LIMIT 1")
+    StudentGroup getByCodeAndYearAndLevel(String code, long academicYearId, Integer levelId);
+
+    @Query("SELECT COUNT(*) FROM student_group WHERE code = :code COLLATE NOCASE AND academic_year_id = :academicYearId AND level_id IS :levelId")
+    int countByCodeAndYearAndLevel(String code, long academicYearId, Integer levelId);
+
+    @Query("SELECT COUNT(*) FROM student_group WHERE code = :code COLLATE NOCASE AND academic_year_id = :academicYearId AND level_id IS :levelId AND id != :excludeId")
+    int countByCodeAndYearAndLevelExcludingId(String code, long academicYearId, Integer levelId, long excludeId);
+
+    @Query("SELECT COUNT(*) FROM enrollment WHERE group_id = :groupId")
     int countStudents(long groupId);
 
     // Suppression refusée si le groupe contient encore des étudiants.
-    @Query("DELETE FROM student_group WHERE id = :groupId AND NOT EXISTS (SELECT 1 FROM student WHERE group_id = :groupId)")
+    @Query("DELETE FROM student_group WHERE id = :groupId AND NOT EXISTS (SELECT 1 FROM enrollment WHERE group_id = :groupId)")
     int deleteIfEmpty(long groupId);
 
 

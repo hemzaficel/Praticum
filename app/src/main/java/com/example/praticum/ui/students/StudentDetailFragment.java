@@ -21,9 +21,9 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
-import com.example.praticum.data.entity.AcademicYear;
+import com.example.praticum.core.common.DeletionConfirmationDialog;
 import com.example.praticum.data.entity.Student;
-import com.example.praticum.data.entity.StudentGroup;
+import com.example.praticum.ui.enrollments.EnrollmentsFragment;
 import com.github.chrisbanes.photoview.PhotoView;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -113,8 +113,6 @@ public class StudentDetailFragment extends Fragment {
     }
 
     private void observeData(View view) {
-        // Groupe et année sont publiés avant l'étudiant : ils sont donc
-        // déjà à jour quand l'étudiant arrive.
         viewModel.getSelectedStudent().observe(
                 getViewLifecycleOwner(),
                 loaded -> {
@@ -125,7 +123,8 @@ public class StudentDetailFragment extends Fragment {
                     student = loaded;
 
                     displayIdentity(view, loaded);
-                    displaySchoolInformation(view, loaded);
+                    displayUniversityInformation(view);
+                    displayContactInformation(view, loaded);
                     displayStudentCard(view, loaded);
                 }
         );
@@ -216,66 +215,47 @@ public class StudentDetailFragment extends Fragment {
     }
 
     // --------------------------------------------------
-    // INFORMATIONS SCOLAIRES
+    // PARCOURS UNIVERSITAIRE ET COORDONNÉES
     // --------------------------------------------------
 
-    private void displaySchoolInformation(View view, Student s) {
-        TextView studentGroup = view.findViewById(
-                R.id.tvStudentDetailGroup
+    private void displayUniversityInformation(View view) {
+        MaterialButton viewEnrollments = view.findViewById(
+                R.id.btnStudentViewEnrollments
         );
+        viewEnrollments.setOnClickListener(v -> {
+            if (!isAdded() || isEmpty(studentId)) return;
+            requireActivity().getSupportFragmentManager().beginTransaction()
+                    .replace(
+                            R.id.mainContainer,
+                            EnrollmentsFragment.newInstanceForStudent(studentId)
+                    )
+                    .addToBackStack("student_enrollments")
+                    .commit();
+        });
+    }
 
-        TextView year = view.findViewById(
-                R.id.tvStudentDetailAcademicYear
-        );
-
-        TextView order = view.findViewById(
-                R.id.tvStudentDetailGroupOrder
-        );
-
+    private void displayContactInformation(View view, Student s) {
         TextView studentEmail = view.findViewById(
                 R.id.tvStudentDetailEmail
         );
-
         TextView studentNotes = view.findViewById(
                 R.id.tvStudentDetailNotes
         );
-
-        StudentGroup group = viewModel.getSelectedGroup().getValue();
-        AcademicYear academicYear =
-                viewModel.getSelectedAcademicYear().getValue();
-
-        String groupCode = group == null ? "" : group.getCode();
-        String yearLabel = academicYear == null
-                ? ""
-                : academicYear.getLabel();
-
-        studentGroup.setText(
-                isEmpty(groupCode) ? "Non renseigné" : groupCode
+        View emptyContact = view.findViewById(
+                R.id.tvStudentDetailContactEmpty
         );
 
-        year.setText(
-                isEmpty(yearLabel) ? "Non renseignée" : yearLabel
-        );
-
-        order.setText(
-                "Ordre dans le groupe : "
-                        + (s.getGroupOrder() > 0
-                        ? String.format(
-                        Locale.getDefault(),
-                        "%02d",
-                        s.getGroupOrder())
-                        : "—")
-        );
-
+        boolean hasEmail = !isEmpty(s.getEmail());
+        boolean hasNotes = !isEmpty(s.getNotes());
         setOptionalText(
                 studentEmail,
-                isEmpty(s.getEmail()) ? "" : "E-mail : " + s.getEmail()
+                hasEmail ? "E-mail : " + s.getEmail() : ""
         );
-
         setOptionalText(
                 studentNotes,
-                isEmpty(s.getNotes()) ? "" : "Remarques : " + s.getNotes()
+                hasNotes ? "Remarques : " + s.getNotes() : ""
         );
+        emptyContact.setVisibility(hasEmail || hasNotes ? View.GONE : View.VISIBLE);
     }
 
     // --------------------------------------------------
@@ -504,21 +484,18 @@ public class StudentDetailFragment extends Fragment {
             return;
         }
 
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Supprimer l'étudiant")
-                .setMessage(
-                        "Voulez-vous vraiment supprimer « "
-                                + student.getFullName() + " » ?\n\n"
-                                + "Ses présences et ses participations "
-                                + "aux équipes d'évaluation seront "
-                                + "également supprimées."
-                )
-                .setNegativeButton("Annuler", null)
-                .setPositiveButton("Supprimer", (dialog, which) -> {
+        DeletionConfirmationDialog.show(
+                requireContext(),
+                "Supprimer l'étudiant ?",
+                "Voulez-vous vraiment supprimer « "
+                        + student.getFullName() + " » ?\n\n"
+                        + "Ses présences et ses participations aux équipes "
+                        + "d'évaluation seront également supprimées.",
+                () -> {
                     deleting = true;
                     viewModel.deleteStudent(student);
-                })
-                .show();
+                }
+        );
     }
 
     private void showModuleNotAvailable(String module) {
@@ -580,3 +557,6 @@ public class StudentDetailFragment extends Fragment {
                 : result.toString().toUpperCase(Locale.getDefault());
     }
 }
+
+
+

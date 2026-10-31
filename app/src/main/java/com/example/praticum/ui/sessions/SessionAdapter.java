@@ -12,7 +12,10 @@ import com.example.praticum.R;
 import com.example.praticum.data.entity.Session;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 public class SessionAdapter
         extends RecyclerView.Adapter<SessionAdapter.SessionViewHolder> {
@@ -22,6 +25,7 @@ public class SessionAdapter
     }
 
     private final List<Session> sessions = new ArrayList<>();
+    private Map<Integer, SessionViewModel.SessionCardSummary> summaries = new HashMap<>();
 
     private final OnSessionClickListener listener;
 
@@ -36,6 +40,11 @@ public class SessionAdapter
             sessions.addAll(nouvelleListe);
         }
 
+        notifyDataSetChanged();
+    }
+
+    public void submitSummaries(Map<Integer, SessionViewModel.SessionCardSummary> values) {
+        summaries = values == null ? new HashMap<>() : new HashMap<>(values);
         notifyDataSetChanged();
     }
 
@@ -76,6 +85,26 @@ public class SessionAdapter
 
         holder.status.setText(statut);
 
+        SessionViewModel.SessionCardSummary summary = summaries.get(session.getId());
+        if (summary == null) {
+            holder.module.setText("Chargement du module…");
+            holder.criteriaCount.setText("Critères d’évaluation : —");
+            holder.maxScore.setText("Barème : —");
+        } else {
+            holder.module.setText(summary.getModuleLabel().isEmpty()
+                    ? "Module non renseigné" : summary.getModuleLabel());
+            int count = summary.getCriteriaCount();
+            holder.criteriaCount.setText(count == 0 ? "Aucun critère d’évaluation"
+                    : count + (count == 1 ? " critère d’évaluation" : " critères d’évaluation"));
+            holder.maxScore.setText(summary.getMaxScore() <= 0 ? "Barème : —"
+                    : String.format(Locale.getDefault(), "Barème · %.2f points", summary.getMaxScore()));
+        }
+
+        String description = session.getDescription();
+        holder.description.setText(description == null || description.trim().isEmpty()
+                ? "Aucune description" : description.trim());
+        holder.description.setAlpha(description == null || description.trim().isEmpty() ? 0.7f : 1f);
+
         holder.itemView.setOnClickListener(v -> {
             if (listener != null) {
                 listener.onSessionClick(session);
@@ -100,6 +129,9 @@ public class SessionAdapter
         final TextView type;
         final TextView description;
         final TextView status;
+        final TextView module;
+        final TextView criteriaCount;
+        final TextView maxScore;
 
         SessionViewHolder(@NonNull View itemView) {
             super(itemView);
@@ -110,6 +142,9 @@ public class SessionAdapter
                     R.id.tvSessionDescription
             );
             status = itemView.findViewById(R.id.tvSessionStatus);
+            module = itemView.findViewById(R.id.tvSessionModule);
+            criteriaCount = itemView.findViewById(R.id.tvSessionCriteriaCount);
+            maxScore = itemView.findViewById(R.id.tvSessionMaxScore);
         }
     }
 }

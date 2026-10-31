@@ -2,6 +2,8 @@
 package com.example.praticum.ui.home;
 
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,12 +12,18 @@ import android.view.inputmethod.InputMethodManager;
 import android.content.Context;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
 import com.example.praticum.MainActivity;
+import com.example.praticum.data.dao.DashboardStatsDao;
+import com.example.praticum.data.entity.AcademicYear;
+import com.example.praticum.data.database.AppDatabase;
+import com.example.praticum.data.database.DatabaseProvider;
+import com.example.praticum.data.database.DatabaseSeeder;
 import com.example.praticum.R;
 import com.example.praticum.ui.academicyears.AcademicYearsFragment;
 import com.example.praticum.ui.groups.GroupsFragment;
@@ -250,6 +258,71 @@ public class HomeFragment extends Fragment {
         super.onDestroyView();
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        View root = getView();
+        if (root != null) {
+            loadDashboardStatistics(root);
+        }
+    }
+
+    private void loadDashboardStatistics(@NonNull View root) {
+        Context appContext = requireContext().getApplicationContext();
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+
+        new Thread(() -> {
+            AcademicYear activeYear = null;
+            int studentsCount = 0;
+            int groupsCount = 0;
+            int enrollmentsCount = 0;
+            int evaluationsCount = 0;
+
+            try {
+                AppDatabase database = DatabaseProvider.getDatabase(appContext);
+                activeYear = database.academicYearDao().getActive();
+                DashboardStatsDao statsDao = database.dashboardStatsDao();
+                studentsCount = statsDao.countStudents();
+
+                if (activeYear != null) {
+                    int yearId = activeYear.getId();
+                    groupsCount = statsDao.countGroupsForAcademicYear(yearId);
+                    enrollmentsCount = statsDao.countEnrollmentsForAcademicYear(yearId);
+                    evaluationsCount = statsDao
+                            .countEvaluationsPerformedForAcademicYear(yearId);
+                }
+            } catch (Exception exception) {
+                android.util.Log.e("HomeFragment", "Chargement des statistiques impossible", exception);
+            }
+
+            final AcademicYear loadedYear = activeYear;
+            final int loadedStudents = studentsCount;
+            final int loadedGroups = groupsCount;
+            final int loadedEnrollments = enrollmentsCount;
+            final int loadedEvaluations = evaluationsCount;
+
+            mainHandler.post(() -> {
+                if (!isAdded() || getView() != root) {
+                    return;
+                }
+
+                TextView yearView = root.findViewById(R.id.tvDashboardAcademicYear);
+                TextView groupsView = root.findViewById(R.id.tvDashboardGroups);
+                TextView studentsView = root.findViewById(R.id.tvDashboardStudents);
+                TextView enrollmentsView = root.findViewById(R.id.tvDashboardSessions);
+                TextView evaluationsView = root.findViewById(R.id.tvDashboardPendingAttendance);
+
+                yearView.setText(loadedYear == null
+                        ? "Aucune année active"
+                        : loadedYear.getLabel());
+                groupsView.setText(String.valueOf(loadedGroups));
+                studentsView.setText(String.valueOf(loadedStudents));
+                enrollmentsView.setText(String.valueOf(loadedEnrollments));
+                evaluationsView.setText(String.valueOf(loadedEvaluations));
+            });
+        }, "dashboard-statistics").start();
+    }
+
     private void initializeConfigurationCards(View root) {
         root.findViewById(R.id.cardDashboardAcademicYears)
                 .setOnClickListener(v ->
@@ -270,11 +343,46 @@ public class HomeFragment extends Fragment {
         root.findViewById(R.id.cardDashboardSession)
                 .setOnClickListener(v ->
                         ouvrirEcran(new SessionsFragment()));
+
+        View seedButton = root.findViewById(R.id.btnSeedTestConfiguration);
+        if (seedButton != null) seedButton.setOnClickListener(this::seedTestConfiguration);
     }
 
+
+    private void seedTestConfiguration(View button) {
+        button.setEnabled(false);
+        Context appContext = requireContext().getApplicationContext();
+        Handler mainHandler = new Handler(Looper.getMainLooper());
+        new Thread(() -> {
+            try {
+                AppDatabase database = DatabaseProvider.getDatabase(appContext);
+                int insertedCount = DatabaseSeeder.seed(database);
+                mainHandler.post(() -> {
+                    if (!isAdded()) return;
+                    button.setEnabled(true);
+                    String message = insertedCount == 0
+                            ? "La configuration de test est déjà présente."
+                            : insertedCount + " élément(s) de configuration ajoutés.";
+                    Toast.makeText(appContext, message, Toast.LENGTH_LONG).show();
+                    View currentRoot = getView();
+                    if (currentRoot != null) {
+                        loadDashboardStatistics(currentRoot);
+                    }
+                });
+            } catch (Exception exception) {
+                mainHandler.post(() -> {
+                    if (!isAdded()) return;
+                    button.setEnabled(true);
+                    Toast.makeText(appContext,
+                            "Échec de l'insertion : " + exception.getMessage(), Toast.LENGTH_LONG).show();
+                });
+            }
+        }, "database-seeder").start();
+    }
     private void ouvrirEcran(androidx.fragment.app.Fragment fragment) {
         if (getActivity() instanceof MainActivity) {
             ((MainActivity) getActivity()).ouvrirEcranSecondaire(fragment);
         }
     }
 }
+

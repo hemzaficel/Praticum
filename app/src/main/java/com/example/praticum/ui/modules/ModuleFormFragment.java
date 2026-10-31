@@ -15,8 +15,10 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.FormExitConfirmation;
 import com.example.praticum.data.entity.Level;
 import com.example.praticum.data.entity.Course;
+import com.example.praticum.data.entity.Specialization;
 import com.example.praticum.ui.levels.LevelViewModel;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
@@ -56,10 +58,16 @@ public class ModuleFormFragment extends Fragment {
 
     private TextInputLayout tilModuleLevel;
     private MaterialAutoCompleteTextView actvModuleLevel;
+    private TextInputLayout tilModuleSpecialization;
+    private MaterialAutoCompleteTextView actvModuleSpecialization;
 
     private final List<Level> niveaux = new ArrayList<>();
     private Level niveauSelectionne;
     private ArrayAdapter<String> levelAdapter;
+    private final List<Specialization> specializations = new ArrayList<>();
+    private Specialization specializationSelected;
+    private ArrayAdapter<String> specializationAdapter;
+    private int specializationId = -1;
 
 
     public ModuleFormFragment() {
@@ -126,6 +134,7 @@ public class ModuleFormFragment extends Fragment {
         configurerEntete(view);
         configurerSemestres();
         configurerNiveaux();
+        configurerSpecializations();
         observerResultats();
 
 
@@ -140,7 +149,7 @@ public class ModuleFormFragment extends Fragment {
         }
 
         if (btnCancel != null) {
-            btnCancel.setOnClickListener(v -> revenir());
+            btnCancel.setOnClickListener(v -> FormExitConfirmation.show(this, this::revenir));
         }
 
         if (moduleId >= 0) {
@@ -165,6 +174,51 @@ public class ModuleFormFragment extends Fragment {
 
         tilModuleLevel = view.findViewById(R.id.tilModuleLevel);
         actvModuleLevel = view.findViewById(R.id.actvModuleLevel);
+        tilModuleSpecialization = view.findViewById(R.id.tilModuleSpecialization);
+        actvModuleSpecialization = view.findViewById(R.id.actvModuleSpecialization);
+    }
+
+    private void configurerSpecializations() {
+        specializationAdapter = new ArrayAdapter<>(requireContext(),
+                android.R.layout.simple_dropdown_item_1line, new ArrayList<>());
+        actvModuleSpecialization.setAdapter(specializationAdapter);
+        actvModuleSpecialization.setOnClickListener(v -> actvModuleSpecialization.showDropDown());
+        actvModuleSpecialization.setOnItemClickListener((parent, itemView, position, id) -> {
+            if (position >= 0 && position < specializations.size()) {
+                specializationSelected = specializations.get(position);
+                specializationId = specializationSelected.getId();
+                tilModuleSpecialization.setError(null);
+            }
+        });
+        viewModel.getSpecializations().observe(getViewLifecycleOwner(), values -> {
+            if (values == null) return;
+            specializations.clear();
+            specializations.addAll(values);
+            List<String> labels = new ArrayList<>();
+            for (Specialization specialization : specializations) {
+                labels.add(specialization.getName());
+            }
+            specializationAdapter.clear();
+            specializationAdapter.addAll(labels);
+            specializationAdapter.notifyDataSetChanged();
+            selectionnerSpecialiteParId(specializationId);
+        });
+        viewModel.loadSpecializations();
+    }
+
+    private void selectionnerSpecialiteParId(int id) {
+        specializationSelected = null;
+        for (int i = 0; i < specializations.size(); i++) {
+            Specialization specialization = specializations.get(i);
+            if (specialization.getId() == id) {
+                specializationSelected = specialization;
+                specializationId = id;
+                actvModuleSpecialization.setText(specializationAdapter.getItem(i), false);
+                tilModuleSpecialization.setError(null);
+                return;
+            }
+        }
+        actvModuleSpecialization.setText("", false);
     }
 
     private void configurerEntete(View view) {
@@ -312,6 +366,8 @@ public class ModuleFormFragment extends Fragment {
         afficherSemestre(module.getSemester());
         levelId = module.getLevelId();
         selectionnerNiveauParId(levelId);
+        specializationId = module.getSpecializationId();
+        selectionnerSpecialiteParId(specializationId);
     }
 
     private void afficherSemestre(int semestre) {
@@ -374,6 +430,12 @@ public class ModuleFormFragment extends Fragment {
             return;
         }
 
+        if (specializationSelected == null) {
+            tilModuleSpecialization.setError("Choisissez la spécialité du module");
+            actvModuleSpecialization.requestFocus();
+            return;
+        }
+
         levelId = niveauSelectionne.getId();
         tilModuleLevel.setError(null);
 
@@ -407,6 +469,7 @@ public class ModuleFormFragment extends Fragment {
                 code,
                 name,
                 levelId,
+                specializationSelected.getId(),
                 semester,
                 coefficient,
                 description
@@ -477,6 +540,7 @@ public class ModuleFormFragment extends Fragment {
         tilCoefficient.setError(null);
         tilDescription.setError(null);
         tilModuleLevel.setError(null);
+        tilModuleSpecialization.setError(null);
     }
 
     private void revenir() {

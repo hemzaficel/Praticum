@@ -17,13 +17,13 @@
         android:title="@string/nav_students" />
 
     <item
+        android:id="@+id/nav_enrollments"
+        android:icon="@drawable/ic_enrollment"
+        android:title="@string/nav_enrollments" />
+
+    <item
         android:id="@+id/nav_sessions"
         android:icon="@drawable/ic_sessions_24"
         android:title="@string/nav_sessions" />
-
-    <item
-        android:id="@+id/nav_reports"
-        android:icon="@drawable/ic_stats_24"
-        android:title="@string/nav_reports" />
 
 </menu>

@@ -10,6 +10,7 @@ import androidx.lifecycle.MutableLiveData;
 import com.example.praticum.data.database.AppDatabase;
 import com.example.praticum.data.database.DatabaseProvider;
 import com.example.praticum.data.entity.Evaluation;
+import com.example.praticum.data.entity.Enrollment;
 import com.example.praticum.data.entity.EvaluationScore;
 import com.example.praticum.data.entity.EvaluationTeam;
 import com.example.praticum.data.entity.EvaluationTeamMember;
@@ -17,14 +18,13 @@ import com.example.praticum.data.entity.Session;
 import com.example.praticum.data.entity.SessionCriterion;
 import com.example.praticum.data.entity.Student;
 import com.example.praticum.data.entity.StudentGroup;
+import com.example.praticum.data.entity.Course;
 
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -57,7 +57,7 @@ public class EvaluationViewModel extends AndroidViewModel {
     public void loadSheet(int sessionId) {
         executor.execute(() -> {
             try {
-                sheetState.postValue(chargerEtat(sessionId));
+                sheetState.postValue(chargerEtat(sessionId, -1, true));
             } catch (Exception e) {
                 sheetState.postValue(null);
 
@@ -76,7 +76,32 @@ public class EvaluationViewModel extends AndroidViewModel {
         });
     }
 
-    private SheetState chargerEtat(int sessionId) {
+    public void loadSheet(int sessionId, long evaluationId) {
+        executor.execute(() -> {
+            try {
+                sheetState.postValue(chargerEtat(sessionId, evaluationId, false));
+            } catch (Exception e) {
+                sheetState.postValue(null);
+                operationResult.postValue(new OperationResult(false,
+                        messageErreur(e, "Impossible de charger l'évaluation."), true, false));
+            }
+        });
+    }
+
+    /** Prépare une feuille vide; l'évaluation sera créée au premier ajout d'étudiant. */
+    public void startNewEvaluation(int sessionId) {
+        executor.execute(() -> {
+            try {
+                sheetState.postValue(chargerEtat(sessionId, -1, false));
+            } catch (Exception e) {
+                sheetState.postValue(null);
+                operationResult.postValue(new OperationResult(false,
+                        messageErreur(e, "Impossible de démarrer l'évaluation."), true, false));
+            }
+        });
+    }
+
+    private SheetState chargerEtat(int sessionId, long requestedEvaluationId, boolean includeFinalizedHistory) {
         Session session =
                 database.sessionDao().getById(sessionId);
 
@@ -90,46 +115,44 @@ public class EvaluationViewModel extends AndroidViewModel {
                 database.sessionCriterionDao()
                         .getBySessionId(sessionId);
 
-        List<StudentGroup> groupes =
-                database.studentGroupDao().getAll();
-
-        Set<String> nomsUniques = new LinkedHashSet<>();
-
-        for (StudentGroup groupe : groupes) {
-            if (groupe.getName() != null
-                    && !groupe.getName().trim().isEmpty()) {
-                nomsUniques.add(groupe.getName().trim());
-            }
-        }
-
-        List<String> groupNames = new ArrayList<>(nomsUniques);
-
-        Evaluation evaluation =
-                database.evaluationDao()
-                        .getBySessionId(sessionId);
-
         List<EvaluationTeamState> teams = new ArrayList<>();
-
-        if (evaluation != null) {
-            List<EvaluationTeam> roomTeams =
-                    database.evaluationTeamDao()
-                            .getByEvaluationId(evaluation.getId());
-
+        List<Evaluation> evaluations = new ArrayList<>();
+        Evaluation activeEvaluation = requestedEvaluationId > 0
+                ? database.evaluationDao().getById(requestedEvaluationId)
+                : null;
+        if (activeEvaluation != null && activeEvaluation.getSessionId() == sessionId) {
+            evaluations.add(activeEvaluation);
+        } else if (includeFinalizedHistory) {
+            evaluations.addAll(database.evaluationDao().getFinalizedBySessionId(sessionId));
+        }
+        for (Evaluation evaluation : evaluations) {
+            List<EvaluationTeam> roomTeams = database.evaluationTeamDao()
+                    .getByEvaluationId(evaluation.getId());
             for (EvaluationTeam team : roomTeams) {
                 teams.add(chargerEquipe(team, criteria));
             }
         }
 
-        int totalStudents =
-                database.studentDao().getAll().size();
+        Course module = database.moduleDao().getById(session.getModuleId());
+        int totalStudents = module == null ? 0
+                : database.enrollmentDao().countStudentsInActiveYearByLevelAndSpecialization(
+                        module.getLevelId(), module.getSpecializationId());
+        List<String> evaluatedStudentIds = module == null ? new ArrayList<>()
+                : database.evaluationTeamMemberDao()
+                        .getFinalizedStudentIdsBySessionLevelAndSpecializationInActiveYear(
+                                sessionId, module.getLevelId(), module.getSpecializationId());
 
         return new SheetState(
                 session,
                 criteria,
-                groupNames,
                 teams,
+                evaluations,
                 totalStudents,
-                evaluation != null
+                module == null ? -1 : module.getLevelId(),
+                module == null ? -1 : module.getSpecializationId(),
+                requestedEvaluationId > 0 && activeEvaluation != null
+                        ? activeEvaluation.getId() : -1,
+                evaluatedStudentIds
         );
     }
 
@@ -152,15 +175,13 @@ public class EvaluationViewModel extends AndroidViewModel {
                 continue;
             }
 
-            StudentGroup group =
-                    database.studentGroupDao()
-                            .getById(student.getGroupId());
-
+            List<Enrollment> studentEnrollments = database.enrollmentDao().getByStudent(student.getStudentId());
+            Enrollment latestEnrollment = studentEnrollments.isEmpty() ? null : studentEnrollments.get(0);
+            StudentGroup group = latestEnrollment == null ? null
+                    : database.studentGroupDao().getById(latestEnrollment.getGroupId());
             students.add(
-                    new StudentWithGroup(
-                            student,
-                            group == null ? "" : group.getName()
-                    )
+                    new StudentWithGroup(student, group == null ? "" : group.getName(),
+                            latestEnrollment == null ? 0 : latestEnrollment.getGroupOrder())
             );
         }
 
@@ -207,22 +228,26 @@ public class EvaluationViewModel extends AndroidViewModel {
             scores.add(score);
         }
 
+        Evaluation ownerEvaluation = database.evaluationDao()
+                .getById(team.getEvaluationId());
         return new EvaluationTeamState(
                 team,
                 students,
                 validCriteria,
-                scores
+                scores,
+                ownerEvaluation != null && ownerEvaluation.isFinalized()
         );
     }
 
     public void addStudent(
             int sessionId,
+            long evaluationId,
             long selectedTeamId,
-            String groupName,
-            int groupOrder) {
+            String selectedStudentId) {
 
         executor.execute(() -> {
             try {
+                final long[] activeEvaluationId = {evaluationId};
                 database.runInTransaction(() -> {
                     Session session =
                             database.sessionDao().getById(sessionId);
@@ -254,52 +279,57 @@ public class EvaluationViewModel extends AndroidViewModel {
                         );
                     }
 
-                    StudentGroup selectedGroup = null;
-
-                    for (StudentGroup group
-                            : database.studentGroupDao().getAll()) {
-                        if (groupName.equals(group.getName())) {
-                            selectedGroup = group;
-                            break;
-                        }
-                    }
-
-                    if (selectedGroup == null) {
+                    if (selectedStudentId == null
+                            || selectedStudentId.trim().isEmpty()) {
                         throw new IllegalArgumentException(
-                                "Le groupe sélectionné n'existe plus."
+                                "Choisissez un étudiant à ajouter à l’équipe."
                         );
                     }
 
-                    Student selectedStudent = null;
-
-                    for (Student student
-                            : database.studentDao().getByGroupId(
-                            selectedGroup.getId())) {
-
-                        if (student.getGroupOrder() == groupOrder) {
-                            selectedStudent = student;
-                            break;
-                        }
-                    }
-
+                    Student selectedStudent = database.studentDao()
+                            .getById(selectedStudentId);
                     if (selectedStudent == null) {
                         throw new IllegalArgumentException(
-                                "Aucun étudiant trouvé pour ce groupe "
-                                        + "et cet ordre."
+                                "L’étudiant sélectionné n’existe plus."
                         );
                     }
 
-                    Evaluation evaluation =
-                            database.evaluationDao()
-                                    .getBySessionId(sessionId);
+                    Enrollment activeEnrollment = database.enrollmentDao()
+                            .getActiveByStudent(selectedStudentId);
+                    if (activeEnrollment == null) {
+                        throw new IllegalArgumentException(
+                                "Cet étudiant n’a pas d’inscription dans l’année universitaire active."
+                        );
+                    }
+                    Course module = database.moduleDao().getById(session.getModuleId());
+                    if (module == null || activeEnrollment.getLevelId() != module.getLevelId()
+                            || activeEnrollment.getSpecializationId() != module.getSpecializationId()) {
+                        throw new IllegalArgumentException("Cet étudiant n'est pas inscrit dans le niveau et la spécialité du module de cette séance.");
+                    }
+                    if (database.evaluationTeamMemberDao()
+                            .countStudentFinalizedInSessionExceptEvaluation(
+                                    sessionId, evaluationId, selectedStudentId) > 0) {
+                        throw new IllegalArgumentException("Cet étudiant a déjà été évalué dans cette séance.");
+                    }
+                    StudentGroup enrolledGroup = database.studentGroupDao()
+                            .getById(activeEnrollment.getGroupId());
+                    if (enrolledGroup == null) {
+                        throw new IllegalArgumentException(
+                                "Le groupe de l’inscription de cet étudiant est introuvable."
+                        );
+                    }
 
+                    Evaluation evaluation = evaluationId > 0
+                            ? database.evaluationDao().getById(evaluationId) : null;
+                    if (evaluationId > 0 && (evaluation == null
+                            || evaluation.getSessionId() != sessionId)) {
+                        throw new IllegalArgumentException("Cette évaluation n'existe plus.");
+                    }
                     if (evaluation == null) {
                         evaluation = new Evaluation(sessionId);
-
-                        long id = database.evaluationDao()
-                                .insert(evaluation);
-
-                        evaluation.setId((int) id);
+                        evaluation.setScoringMode(Evaluation.SCORING_MODE_COMMON);
+                        activeEvaluationId[0] = database.evaluationDao().insert(evaluation);
+                        evaluation.setId((int) activeEvaluationId[0]);
                     }
 
                     EvaluationTeam team;
@@ -310,7 +340,7 @@ public class EvaluationViewModel extends AndroidViewModel {
 
                         if (team == null
                                 || team.getEvaluationId()
-                                != evaluation.getId()) {
+                                != activeEvaluationId[0]) {
                             throw new IllegalArgumentException(
                                     "L'équipe sélectionnée n'existe plus."
                             );
@@ -319,7 +349,7 @@ public class EvaluationViewModel extends AndroidViewModel {
                         Integer maxNumber =
                                 database.evaluationTeamDao()
                                         .getMaxTeamNumber(
-                                                evaluation.getId()
+                                                activeEvaluationId[0]
                                         );
 
                         int nextNumber = maxNumber == null
@@ -327,7 +357,7 @@ public class EvaluationViewModel extends AndroidViewModel {
                                 : maxNumber + 1;
 
                         team = new EvaluationTeam(
-                                evaluation.getId(),
+                                activeEvaluationId[0],
                                 nextNumber,
                                 "Équipe " + nextNumber
                         );
@@ -344,7 +374,7 @@ public class EvaluationViewModel extends AndroidViewModel {
                     int alreadyAssigned =
                             database.evaluationTeamMemberDao()
                                     .countStudentInEvaluation(
-                                            evaluation.getId(),
+                                            activeEvaluationId[0],
                                             studentId
                                     );
 
@@ -359,12 +389,12 @@ public class EvaluationViewModel extends AndroidViewModel {
                             new EvaluationTeamMember(
                                     team.getId(),
                                     studentId,
-                                    evaluation.getId()
+                                    activeEvaluationId[0]
                             )
                     );
                 });
 
-                sheetState.postValue(chargerEtat(sessionId));
+                sheetState.postValue(chargerEtat(sessionId, activeEvaluationId[0], false));
 
                 operationResult.postValue(
                         new OperationResult(
@@ -386,6 +416,7 @@ public class EvaluationViewModel extends AndroidViewModel {
 
     public void removeStudent(
             int sessionId,
+            long evaluationId,
             long teamId,
             String studentId) {
 
@@ -427,7 +458,7 @@ public class EvaluationViewModel extends AndroidViewModel {
                     }
                 });
 
-                sheetState.postValue(chargerEtat(sessionId));
+                sheetState.postValue(chargerEtat(sessionId, evaluationId, false));
 
             } catch (Exception e) {
                 publierErreur(
@@ -460,6 +491,7 @@ public class EvaluationViewModel extends AndroidViewModel {
 
     public void saveEvaluation(
             int sessionId,
+            long evaluationId,
             long teamId,
             List<EvaluationScore> scores) {
 
@@ -467,6 +499,7 @@ public class EvaluationViewModel extends AndroidViewModel {
 
         executor.execute(() -> {
             try {
+                final boolean[] editingFinalizedEvaluation = {false};
                 database.runInTransaction(() -> {
                     Session session =
                             database.sessionDao().getById(sessionId);
@@ -477,18 +510,13 @@ public class EvaluationViewModel extends AndroidViewModel {
                         );
                     }
 
-                    Evaluation evaluation =
-                            database.evaluationDao()
-                                    .getBySessionId(sessionId);
-
-                    if (evaluation == null) {
-                        evaluation = new Evaluation(sessionId);
-
-                        long id = database.evaluationDao()
-                                .insert(evaluation);
-
-                        evaluation.setId((int) id);
+                    Evaluation evaluation = evaluationId > 0
+                            ? database.evaluationDao().getById(evaluationId) : null;
+                    if (evaluationId <= 0 || evaluation == null || evaluation.getSessionId() != sessionId
+                            ) {
+                        throw new IllegalArgumentException("Cette évaluation n'existe plus.");
                     }
+                    editingFinalizedEvaluation[0] = evaluation.isFinalized();
 
                     database.evaluationDao()
                             .setCommonScoringMode(evaluation.getId());
@@ -496,16 +524,24 @@ public class EvaluationViewModel extends AndroidViewModel {
                     if (teamId > 0) {
                         enregistrerNotes(teamId, copies);
                     }
+                    if (database.evaluationTeamDao().countByEvaluationId(evaluationId) == 0) {
+                        throw new IllegalArgumentException("Ajoutez au moins un étudiant avant d'enregistrer.");
+                    }
+                    database.evaluationDao().finalizeEvaluation(evaluationId, System.currentTimeMillis());
                 });
 
-                sheetState.postValue(chargerEtat(sessionId));
+                sheetState.postValue(editingFinalizedEvaluation[0]
+                        ? chargerEtat(sessionId, evaluationId, false)
+                        : chargerEtat(sessionId, -1, false));
 
                 operationResult.postValue(
                         new OperationResult(
                                 true,
-                                "Évaluation enregistrée.",
-                                true,
-                                false
+                                editingFinalizedEvaluation[0]
+                                        ? "Évaluation modifiée."
+                                        : "Résultats enregistrés. Le formulaire est prêt pour une nouvelle évaluation.",
+                                editingFinalizedEvaluation[0],
+                                !editingFinalizedEvaluation[0]
                         )
                 );
 
@@ -514,6 +550,28 @@ public class EvaluationViewModel extends AndroidViewModel {
                         e,
                         "Impossible d'enregistrer l'évaluation."
                 );
+            }
+        });
+    }
+
+    public void deleteEvaluation(int sessionId, long evaluationId) {
+        executor.execute(() -> {
+            try {
+                database.runInTransaction(() -> {
+                    Evaluation evaluation = database.evaluationDao().getById(evaluationId);
+                    if (evaluation == null || evaluation.getSessionId() != sessionId
+                            || !evaluation.isFinalized()) {
+                        throw new IllegalArgumentException("Cette évaluation n'existe plus.");
+                    }
+                    if (database.evaluationDao().deleteByIdAndSession(evaluationId, sessionId) == 0) {
+                        throw new IllegalArgumentException("L'évaluation n'a pas pu être supprimée.");
+                    }
+                });
+                sheetState.postValue(chargerEtat(sessionId, -1, true));
+                operationResult.postValue(new OperationResult(
+                        true, "Évaluation supprimée.", false, false));
+            } catch (Exception e) {
+                publierErreur(e, "Impossible de supprimer l'évaluation.");
             }
         });
     }
@@ -672,24 +730,34 @@ public class EvaluationViewModel extends AndroidViewModel {
     public static final class SheetState {
         private final Session session;
         private final List<SessionCriterion> criteria;
-        private final List<String> groupNames;
         private final List<EvaluationTeamState> teams;
+        private final List<Evaluation> evaluations;
         private final int totalStudents;
-        private final boolean evaluationExists;
+        private final int moduleLevelId;
+        private final int moduleSpecializationId;
+        private final long evaluationId;
+        private final List<String> evaluatedStudentIds;
 
         SheetState(
                 Session session,
                 List<SessionCriterion> criteria,
-                List<String> groupNames,
                 List<EvaluationTeamState> teams,
+                List<Evaluation> evaluations,
                 int totalStudents,
-                boolean evaluationExists) {
+                int moduleLevelId,
+                int moduleSpecializationId,
+                long evaluationId,
+                List<String> evaluatedStudentIds) {
             this.session = session;
             this.criteria = new ArrayList<>(criteria);
-            this.groupNames = new ArrayList<>(groupNames);
             this.teams = new ArrayList<>(teams);
+            this.evaluations = evaluations == null ? new ArrayList<>() : new ArrayList<>(evaluations);
             this.totalStudents = totalStudents;
-            this.evaluationExists = evaluationExists;
+            this.moduleLevelId = moduleLevelId;
+            this.moduleSpecializationId = moduleSpecializationId;
+            this.evaluationId = evaluationId;
+            this.evaluatedStudentIds = evaluatedStudentIds == null
+                    ? new ArrayList<>() : new ArrayList<>(evaluatedStudentIds);
         }
 
         public Session getSession() {
@@ -700,20 +768,26 @@ public class EvaluationViewModel extends AndroidViewModel {
             return new ArrayList<>(criteria);
         }
 
-        public List<String> getGroupNames() {
-            return new ArrayList<>(groupNames);
-        }
-
         public List<EvaluationTeamState> getTeams() {
             return new ArrayList<>(teams);
         }
+
+        public List<Evaluation> getEvaluations() { return new ArrayList<>(evaluations); }
 
         public int getTotalStudents() {
             return totalStudents;
         }
 
-        public boolean hasEvaluation() {
-            return evaluationExists;
+        public int getModuleLevelId() { return moduleLevelId; }
+
+        public int getModuleSpecializationId() { return moduleSpecializationId; }
+
+        public long getEvaluationId() {
+            return evaluationId;
+        }
+
+        public List<String> getEvaluatedStudentIds() {
+            return new ArrayList<>(evaluatedStudentIds);
         }
     }
 
@@ -722,16 +796,19 @@ public class EvaluationViewModel extends AndroidViewModel {
         private final List<StudentWithGroup> students;
         private final List<SessionCriterion> criteria;
         private final List<EvaluationScore> scores;
+        private final boolean evaluated;
 
         EvaluationTeamState(
                 EvaluationTeam team,
                 List<StudentWithGroup> students,
                 List<SessionCriterion> criteria,
-                List<EvaluationScore> scores) {
+                List<EvaluationScore> scores,
+                boolean evaluated) {
             this.team = team;
             this.students = new ArrayList<>(students);
             this.criteria = new ArrayList<>(criteria);
             this.scores = new ArrayList<>(scores);
+            this.evaluated = evaluated;
         }
 
         public EvaluationTeam getTeam() {
@@ -771,13 +848,7 @@ public class EvaluationViewModel extends AndroidViewModel {
         }
 
         public boolean isEvaluated() {
-            for (EvaluationScore score : scores) {
-                if (score.getScore() > 0) {
-                    return true;
-                }
-            }
-
-            return false;
+            return evaluated;
         }
 
         public double getScoreSur20() {
@@ -792,21 +863,18 @@ public class EvaluationViewModel extends AndroidViewModel {
     public static final class StudentWithGroup {
         private final Student student;
         private final String groupName;
+        private final int groupOrder;
 
-        StudentWithGroup(Student student, String groupName) {
+        StudentWithGroup(Student student, String groupName, int groupOrder) {
             this.student = student;
             this.groupName = groupName == null ? "" : groupName;
+            this.groupOrder = groupOrder;
         }
 
-        public Student getStudent() {
-            return student;
-        }
-
-        public String getGroupName() {
-            return groupName;
-        }
+        public Student getStudent() { return student; }
+        public String getGroupName() { return groupName; }
+        public int getGroupOrder() { return groupOrder; }
     }
-
     private String messageErreur(Exception exception, String fallback) {
         if (exception == null) {
             return fallback;
@@ -821,3 +889,9 @@ public class EvaluationViewModel extends AndroidViewModel {
         return message;
     }
 }
+
+
+
+
+
+

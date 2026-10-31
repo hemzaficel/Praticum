@@ -52,6 +52,11 @@ public class SessionViewModel extends AndroidViewModel {
     private final MutableLiveData<OperationResult> operationResult =
             new MutableLiveData<>();
 
+    private final MutableLiveData<Map<Integer, SessionCardSummary>> sessionCardSummaries =
+            new MutableLiveData<>(new HashMap<>());
+    private final Map<Integer, SessionCardSummary> sessionCardSummaryCache = new HashMap<>();
+    private final Set<Integer> sessionCardSummaryLoads = new HashSet<>();
+
     private String searchQuery = "";
     private String statusFilter = "Tous";
 
@@ -96,9 +101,62 @@ public class SessionViewModel extends AndroidViewModel {
         return operationResult;
     }
 
+    public LiveData<Map<Integer, SessionCardSummary>> getSessionCardSummaries() {
+        return sessionCardSummaries;
+    }
+
+    public void loadSessionCardSummaries(List<Session> sessions) {
+        if (sessions == null || sessions.isEmpty()) return;
+        List<Session> missing = new ArrayList<>();
+        synchronized (sessionCardSummaryCache) {
+            for (Session session : sessions) {
+                if (session != null && !sessionCardSummaryCache.containsKey(session.getId())
+                        && sessionCardSummaryLoads.add(session.getId())) {
+                    missing.add(session);
+                }
+            }
+        }
+        if (missing.isEmpty()) return;
+        executor.execute(() -> {
+            Map<Integer, SessionCardSummary> loaded = new HashMap<>();
+            for (Session session : missing) {
+                try {
+                    Course module = moduleDao.getById(session.getModuleId());
+                    List<SessionCriterion> criteria = criterionDao.getBySessionId(session.getId());
+                    double maxScore = 0;
+                    if (criteria != null) {
+                        for (SessionCriterion criterion : criteria) {
+                            maxScore += criterion.getMaxScore();
+                        }
+                    }
+                    String moduleName = module == null ? "" : valeurOuVide(module.getName());
+                    String moduleCode = module == null ? "" : valeurOuVide(module.getCode());
+                    String moduleLabel = moduleCode.isEmpty() ? moduleName
+                            : moduleName.isEmpty() ? moduleCode : moduleCode + " · " + moduleName;
+                    loaded.put(session.getId(), new SessionCardSummary(moduleLabel,
+                            criteria == null ? 0 : criteria.size(), maxScore));
+                } catch (Exception ignored) {
+                    loaded.put(session.getId(), new SessionCardSummary("", 0, 0));
+                }
+            }
+            Map<Integer, SessionCardSummary> snapshot;
+            synchronized (sessionCardSummaryCache) {
+                sessionCardSummaryCache.putAll(loaded);
+                for (Session session : missing) sessionCardSummaryLoads.remove(session.getId());
+                snapshot = new HashMap<>(sessionCardSummaryCache);
+            }
+            sessionCardSummaries.postValue(snapshot);
+        });
+    }
+
     public void loadSessions() {
         executor.execute(() -> {
             try {
+                synchronized (sessionCardSummaryCache) {
+                    sessionCardSummaryCache.clear();
+                    sessionCardSummaryLoads.clear();
+                }
+                sessionCardSummaries.postValue(new HashMap<>());
                 activeSessions.postValue(
                         repository.getActiveSessions()
                 );
@@ -217,18 +275,28 @@ public class SessionViewModel extends AndroidViewModel {
                         session.getModuleId()
                 );
 
-                String moduleName = module == null
-                        ? ""
-                        : valeurOuVide(module.getName());
-
-                List<SessionCriterion> criteria =
-                        criterionDao.getBySessionId(sessionId);
+                String moduleName = module == null ? "" : valeurOuVide(module.getName());
+                String moduleCode = module == null ? "" : valeurOuVide(module.getCode());
+                com.example.praticum.data.entity.Specialization specialization = module == null ? null
+                        : database.specializationDao().getById(module.getSpecializationId());
+                String specializationName = specialization == null ? "" : valeurOuVide(specialization.getName());
+                com.example.praticum.data.entity.Level level = module == null ? null
+                        : database.levelDao().getById(module.getLevelId());
+                String levelName = level == null ? "" : valeurOuVide(level.getName());
+                int semester = module == null ? 0 : module.getSemester();
+                double coefficient = module == null ? 0 : module.getCoefficient();
+                List<SessionCriterion> criteria = criterionDao.getBySessionId(sessionId);
 
                 sessionDetails.postValue(
                         new SessionDetails(
                                 session,
                                 criteria,
-                                moduleName
+                                moduleName,
+                                specializationName,
+                                moduleCode,
+                                levelName,
+                                semester,
+                                coefficient
                         )
                 );
 
@@ -563,41 +631,50 @@ public class SessionViewModel extends AndroidViewModel {
         executor.shutdown();
     }
 
-    public static final class SessionDetails {
+    public static final class SessionCardSummary {
+        private final String moduleLabel;
+        private final int criteriaCount;
+        private final double maxScore;
 
-        private final Session session;
-        private final List<SessionCriterion> criteria;
-        private final String moduleName;
-
-        public SessionDetails(
-                Session session,
-                List<SessionCriterion> criteria,
-                String moduleName) {
-
-            this.session = session;
-
-            this.criteria = criteria == null
-                    ? new ArrayList<>()
-                    : new ArrayList<>(criteria);
-
-            this.moduleName = moduleName == null
-                    ? ""
-                    : moduleName;
+        public SessionCardSummary(String moduleLabel, int criteriaCount, double maxScore) {
+            this.moduleLabel = moduleLabel == null ? "" : moduleLabel;
+            this.criteriaCount = criteriaCount;
+            this.maxScore = maxScore;
         }
 
-        public Session getSession() {
-            return session;
-        }
-
-        public List<SessionCriterion> getCriteria() {
-            return new ArrayList<>(criteria);
-        }
-
-        public String getModuleName() {
-            return moduleName;
-        }
+        public String getModuleLabel() { return moduleLabel; }
+        public int getCriteriaCount() { return criteriaCount; }
+        public double getMaxScore() { return maxScore; }
     }
 
+    public static final class SessionDetails {
+        private final Session session;
+        private final List<SessionCriterion> criteria;
+        private final String moduleName, specializationName, moduleCode, levelName;
+        private final int semester;
+        private final double coefficient;
+
+        public SessionDetails(Session session, List<SessionCriterion> criteria,
+                String moduleName, String specializationName, String moduleCode,
+                String levelName, int semester, double coefficient) {
+            this.session = session;
+            this.criteria = criteria == null ? new ArrayList<>() : new ArrayList<>(criteria);
+            this.moduleName = moduleName == null ? "" : moduleName;
+            this.specializationName = specializationName == null ? "" : specializationName;
+            this.moduleCode = moduleCode == null ? "" : moduleCode;
+            this.levelName = levelName == null ? "" : levelName;
+            this.semester = semester;
+            this.coefficient = coefficient;
+        }
+        public Session getSession() { return session; }
+        public List<SessionCriterion> getCriteria() { return new ArrayList<>(criteria); }
+        public String getModuleName() { return moduleName; }
+        public String getSpecializationName() { return specializationName; }
+        public String getModuleCode() { return moduleCode; }
+        public String getLevelName() { return levelName; }
+        public int getSemester() { return semester; }
+        public double getCoefficient() { return coefficient; }
+    }
     public static final class OperationResult {
 
         private final boolean success;

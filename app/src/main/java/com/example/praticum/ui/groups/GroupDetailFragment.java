@@ -15,6 +15,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.DeletionConfirmationDialog;
 import com.example.praticum.data.entity.AcademicYear;
 import com.example.praticum.data.entity.StudentGroup;
 import com.google.android.material.button.MaterialButton;
@@ -302,18 +303,16 @@ public class GroupDetailFragment extends Fragment {
             return;
         }
 
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Supprimer le groupe")
-                .setMessage(
-                        "Voulez-vous vraiment supprimer le groupe « "
-                                + valeur(groupe.getName()) + " » ?"
-                )
-                .setNegativeButton("Annuler", null)
-                .setPositiveButton("Supprimer", (dialog, which) -> {
+        DeletionConfirmationDialog.show(
+                requireContext(),
+                "Supprimer le groupe ?",
+                "Voulez-vous vraiment supprimer le groupe « "
+                        + valeur(groupe.getName()) + " » ?",
+                () -> {
                     suppressionEnCours = true;
                     viewModel.deleteGroup(groupe);
-                })
-                .show();
+                }
+        );
     }
 
     private void revenir() {

@@ -8,11 +8,13 @@ import androidx.lifecycle.LiveData;
 import androidx.lifecycle.MutableLiveData;
 
 import com.example.praticum.data.dao.AcademicYearDao;
+import com.example.praticum.data.dao.LevelDao;
 import com.example.praticum.data.dao.SessionGroupDao;
 import com.example.praticum.data.dao.StudentGroupDao;
 import com.example.praticum.data.database.AppDatabase;
 import com.example.praticum.data.database.DatabaseProvider;
 import com.example.praticum.data.entity.AcademicYear;
+import com.example.praticum.data.entity.Level;
 import com.example.praticum.data.entity.StudentGroup;
 import com.example.praticum.data.repository.StudentGroupRepository;
 import com.example.praticum.R;
@@ -39,6 +41,7 @@ public class GroupViewModel extends AndroidViewModel {
     private final StudentGroupDao groupDao;
     private final SessionGroupDao sessionGroupDao;
     private final AcademicYearDao academicYearDao;
+    private final LevelDao levelDao;
 
     private final ExecutorService executor =
             Executors.newSingleThreadExecutor();
@@ -46,6 +49,12 @@ public class GroupViewModel extends AndroidViewModel {
     // Liste
     private final MutableLiveData<List<StudentGroup>> groups =
             new MutableLiveData<>(new ArrayList<>());
+
+    private final MutableLiveData<List<Level>> levels =
+            new MutableLiveData<>(new ArrayList<>());
+
+    private final MutableLiveData<AcademicYear> activeAcademicYear =
+            new MutableLiveData<>();
 
     // Effectifs par identifiant de groupe
     private final MutableLiveData<Map<Integer, Integer>> studentCounts =
@@ -84,12 +93,21 @@ public class GroupViewModel extends AndroidViewModel {
         groupDao = database.studentGroupDao();
         sessionGroupDao = database.sessionGroupDao();
         academicYearDao = database.academicYearDao();
+        levelDao = database.levelDao();
 
         repository = new StudentGroupRepository(groupDao);
     }
 
     public LiveData<List<StudentGroup>> getGroups() {
         return groups;
+    }
+
+    public LiveData<List<Level>> getLevels() {
+        return levels;
+    }
+
+    public LiveData<AcademicYear> getActiveAcademicYear() {
+        return activeAcademicYear;
     }
 
     public LiveData<Map<Integer, Integer>> getStudentCounts() {
@@ -240,7 +258,13 @@ public class GroupViewModel extends AndroidViewModel {
     }
 
     private void rafraichirListe() {
-        List<StudentGroup> resultat = repository.getAll();
+        AcademicYear anneeActive = academicYearDao.getActive();
+        List<StudentGroup> resultat = anneeActive == null
+                ? new ArrayList<>()
+                : repository.getByAcademicYear(anneeActive.getId());
+        List<Level> niveaux = levelDao.getAll();
+        levels.postValue(niveaux == null ? new ArrayList<>() : niveaux);
+        activeAcademicYear.postValue(anneeActive);
 
         if (resultat == null) {
             resultat = new ArrayList<>();

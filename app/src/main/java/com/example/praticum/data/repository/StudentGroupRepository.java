@@ -68,20 +68,17 @@ public class StudentGroupRepository {
 
     private void checkUniqueCode(StudentGroup group, long excludeId) {
         int count;
-
         if (excludeId == 0) {
-            count = groupDao.countByCodeAndAcademicYear(
-                    group.getCode(), group.getAcademicYearId());
+            count = groupDao.countByCodeAndYearAndLevel(
+                    group.getCode(), group.getAcademicYearId(), group.getLevelId());
         } else {
-            count = groupDao.countByCodeAndAcademicYearExcludingId(
-                    group.getCode(),
-                    group.getAcademicYearId(),
-                    excludeId);
+            count = groupDao.countByCodeAndYearAndLevelExcludingId(
+                    group.getCode(), group.getAcademicYearId(), group.getLevelId(), excludeId);
         }
 
         if (count > 0) {
             throw new IllegalArgumentException(
-                    "Ce code est déjà utilisé pour cette année universitaire.");
+                    "Ce code est déjà utilisé pour ce niveau et cette année universitaire.");
         }
     }
 

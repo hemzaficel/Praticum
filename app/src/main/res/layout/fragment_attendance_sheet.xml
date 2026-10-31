@@ -234,32 +234,64 @@
                     android:textSize="14sp"
                     android:textStyle="bold" />
 
-                <com.google.android.material.textfield.TextInputLayout
-                    android:id="@+id/tilAttendanceGroup"
-                    style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
-                    android:hint="Sélectionner un groupe de cette session"
-                    app:boxBackgroundColor="@color/white"
-                    app:boxCornerRadiusBottomEnd="12dp"
-                    app:boxCornerRadiusBottomStart="12dp"
-                    app:boxCornerRadiusTopEnd="12dp"
-                    app:boxCornerRadiusTopStart="12dp"
-                    app:boxStrokeColor="@color/primary"
-                    app:endIconMode="dropdown_menu">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
-                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                        android:id="@+id/actAttendanceGroup"
-                        android:layout_width="match_parent"
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/tilAttendanceGroup"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="0dp"
                         android:layout_height="wrap_content"
-                        android:inputType="none"
-                        android:paddingTop="14dp"
-                        android:paddingBottom="14dp"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp" />
+                        android:layout_weight="1"
+                        android:hint="Groupe sélectionné"
+                        app:boxBackgroundColor="@color/white"
+                        app:boxCornerRadiusBottomEnd="12dp"
+                        app:boxCornerRadiusBottomStart="12dp"
+                        app:boxCornerRadiusTopEnd="12dp"
+                        app:boxCornerRadiusTopStart="12dp"
+                        app:boxStrokeColor="@color/primary">
 
-                </com.google.android.material.textfield.TextInputLayout>
+                        <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                            android:id="@+id/actAttendanceGroup"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:clickable="false"
+                            android:focusable="false"
+                            android:inputType="none"
+                            android:minHeight="56dp"
+                            android:paddingStart="12dp"
+                            android:paddingEnd="12dp"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp" />
+
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnChooseAttendanceGroup"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="56dp"
+                        android:layout_height="56dp"
+                        android:layout_marginStart="8dp"
+                        android:contentDescription="Rechercher un groupe"
+                        android:insetTop="0dp"
+                        android:insetBottom="0dp"
+                        android:minWidth="0dp"
+                        android:minHeight="0dp"
+                        android:padding="0dp"
+                        android:text=""
+                        app:cornerRadius="12dp"
+                        app:icon="@drawable/ic_search"
+                        app:iconGravity="textStart"
+                        app:iconPadding="0dp"
+                        app:iconSize="20dp"
+                        app:iconTint="@color/primary"
+                        app:strokeColor="@color/color_outline" />
+
+                </LinearLayout>
 
                 <TextView
                     android:id="@+id/tvAttendanceGroupStudentCount"
@@ -843,11 +875,25 @@
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="6dp"
-                    android:text="Les statuts renseignés seront conservés. Les étudiants sans statut resteront identifiés comme incomplets."
+                    android:text="Le fichier Excel reprend les étudiants du groupe sélectionné et les statuts affichés, même avant leur enregistrement. Les statuts vides apparaissent comme Non renseigné."
                     android:textColor="@color/text_secondary"
                     android:textSize="12sp"
                     android:lineSpacingExtra="3dp" />
 
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnExportAttendanceExcel"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:layout_marginTop="14dp"
+                    android:text="Exporter le groupe en Excel"
+                    android:textAllCaps="false"
+                    android:textColor="@color/primary_dark"
+                    app:cornerRadius="12dp"
+                    app:icon="@drawable/ic_attendance_excel"
+                    app:iconGravity="textStart"
+                    app:iconTint="@color/primary_dark"
+                    app:strokeColor="@color/color_outline" />
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btnSaveAttendanceSheet"
                     android:layout_width="match_parent"

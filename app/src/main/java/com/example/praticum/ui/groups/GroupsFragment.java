@@ -24,6 +24,7 @@ import com.example.praticum.MainActivity;
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
 import com.example.praticum.core.common.FilterSortFragment;
+import com.example.praticum.data.entity.Level;
 import com.example.praticum.data.entity.StudentGroup;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.textfield.TextInputLayout;
@@ -38,6 +39,10 @@ import java.util.Map;
 public class GroupsFragment extends Fragment
         implements FilterSortFragment.OnFilterSortListener {
 
+    public static final String RESULT_KEY = "attendance_group_result";
+    public static final String RESULT_GROUP_ID = "group_id";
+    public static final String RESULT_GROUP_LABEL = "group_label";
+    private static final String ARG_SELECTION_MODE = "selection_mode";
     private static final String FILTRE_TOUS = "Tous";
 
     private RecyclerView rvGroups;
@@ -46,6 +51,7 @@ public class GroupsFragment extends Fragment
     private TextInputLayout tilGroupsSearch;
     private EditText etGroupsSearch;
     private TextView tvGroupsCount;
+    private TextView tvGroupsYearSubtitle;
 
     private FrameLayout filterSortContainer;
     private View btnSearch;
@@ -56,12 +62,27 @@ public class GroupsFragment extends Fragment
     private List<StudentGroup> groups = new ArrayList<>();
     private Map<Integer, Integer> effectifs = new HashMap<>();
     private Map<Integer, Integer> seances = new HashMap<>();
+    private Map<Integer, Level> niveauxParId = new HashMap<>();
+    private Map<String, Integer> niveauxParOption = new HashMap<>();
 
     private String recherche = "";
     private String triPar = "Nom";
     private boolean ordreCroissant = true;
     private String filtreAvance = FILTRE_TOUS;
     private boolean rechercheVisible = false;
+
+    public static GroupsFragment newInstanceForSelection() {
+        GroupsFragment fragment = new GroupsFragment();
+        Bundle args = new Bundle();
+        args.putBoolean(ARG_SELECTION_MODE, true);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    private boolean isSelectionMode() {
+        return getArguments() != null
+                && getArguments().getBoolean(ARG_SELECTION_MODE, false);
+    }
 
     public GroupsFragment() {
         // Constructeur public requis
@@ -119,15 +140,31 @@ public class GroupsFragment extends Fragment
     private void configurerEntete(@NonNull View view) {
         CommonHeaderHelper.configurerEntetePrincipal(
                 view,
-                "Groupes",
-                "Gérez vos groupes et leurs membres",
+                isSelectionMode() ? "Sélectionner un groupe" : "Groupes",
+                "Chargement de l’année universitaire active…",
                 v -> {
-                    if (requireActivity() instanceof MainActivity) {
+                    if (isSelectionMode()) {
+                        getParentFragmentManager().popBackStack();
+                    } else if (requireActivity() instanceof MainActivity) {
                         ((MainActivity) requireActivity())
                                 .ouvrirMenuLateral();
                     }
                 }
         );
+
+        tvGroupsYearSubtitle = view.findViewById(
+                R.id.tvCommonHeaderSubtitle
+        );
+
+        if (isSelectionMode()) {
+            android.widget.ImageButton backButton = view.findViewById(
+                    R.id.btnCommonMenu
+            );
+            if (backButton != null) {
+                backButton.setImageResource(R.drawable.ic_arrow_back);
+                backButton.setContentDescription("Retour au formulaire");
+            }
+        }
 
         btnSearch = view.findViewById(
                 R.id.btnCommonHeaderSearch
@@ -151,12 +188,43 @@ public class GroupsFragment extends Fragment
 
         rvGroups.setNestedScrollingEnabled(false);
 
-        adapter = new GroupAdapter(this::ouvrirDetail);
+        adapter = new GroupAdapter(this::onGroupClicked);
 
         rvGroups.setAdapter(adapter);
     }
 
     private void observerDonnees() {
+        viewModel.getActiveAcademicYear().observe(
+                getViewLifecycleOwner(),
+                annee -> {
+                    if (tvGroupsYearSubtitle != null) {
+                        tvGroupsYearSubtitle.setText(annee == null
+                                ? "Aucune année universitaire active"
+                                : "Année universitaire active : "
+                                        + annee.getLabel());
+                    }
+                }
+        );
+
+        viewModel.getLevels().observe(
+                getViewLifecycleOwner(),
+                niveaux -> {
+                    niveauxParId = new HashMap<>();
+                    niveauxParOption = new HashMap<>();
+
+                    if (niveaux != null) {
+                        for (Level niveau : niveaux) {
+                            if (niveau == null) continue;
+                            niveauxParId.put(niveau.getId(), niveau);
+                            String option = optionNiveau(niveau);
+                            niveauxParOption.put(option, niveau.getId());
+                        }
+                    }
+
+                    actualiserListe();
+                }
+        );
+
         viewModel.getStudentCounts().observe(
                 getViewLifecycleOwner(),
                 valeurs -> {
@@ -305,9 +373,13 @@ public class GroupsFragment extends Fragment
                 view.findViewById(R.id.btnCreateGroup);
 
         if (btnCreateGroup != null) {
-            btnCreateGroup.setOnClickListener(
-                    v -> ouvrirFormulaire()
-            );
+            if (isSelectionMode()) {
+                btnCreateGroup.setVisibility(View.GONE);
+            } else {
+                btnCreateGroup.setOnClickListener(
+                        v -> ouvrirFormulaire()
+                );
+            }
         }
     }
 
@@ -339,29 +411,31 @@ public class GroupsFragment extends Fragment
             return;
         }
 
-        String[] specializations = viewModel.getSpecializations();
+        List<String> optionsFiltre = new ArrayList<>();
+        optionsFiltre.add(FILTRE_TOUS);
 
-        String[] optionsFiltre = new String[specializations.length + 1];
+        for (String specialite : viewModel.getSpecializations()) {
+            if (specialite != null && !specialite.trim().isEmpty()) {
+                optionsFiltre.add("Spécialité : " + specialite.trim());
+            }
+        }
 
-        optionsFiltre[0] = FILTRE_TOUS;
-
-        System.arraycopy(
-                specializations,
-                0,
-                optionsFiltre,
-                1,
-                specializations.length
-        );
+        List<Level> niveauxTries = new ArrayList<>(niveauxParId.values());
+        niveauxTries.sort(Comparator.comparingInt(Level::getDisplayOrder));
+        for (Level niveau : niveauxTries) {
+            optionsFiltre.add(optionNiveau(niveau));
+        }
 
         FilterSortFragment fragment =
                 FilterSortFragment.newInstance(
                         new String[]{
                                 "Nom",
                                 "Code",
-                                "Matière",
+                                "Spécialité",
+                                "Niveau d’études",
                                 "Nombre d'étudiants"
                         },
-                        optionsFiltre
+                        optionsFiltre.toArray(new String[0])
                 );
 
         getChildFragmentManager()
@@ -458,8 +532,14 @@ public class GroupsFragment extends Fragment
             return true;
         }
 
-        return valeur(group.getSubject())
-                .equalsIgnoreCase(filtreAvance);
+        if (filtreAvance.startsWith("Spécialité : ")) {
+            String specialite = filtreAvance.substring("Spécialité : ".length());
+            return valeur(group.getSubject()).equalsIgnoreCase(specialite);
+        }
+
+        Integer niveauId = niveauxParOption.get(filtreAvance);
+        return niveauId != null && group.getLevelId() != null
+                && niveauId.equals(group.getLevelId());
     }
 
     private void appliquerTri(List<StudentGroup> liste) {
@@ -473,11 +553,27 @@ public class GroupsFragment extends Fragment
                 );
                 break;
 
-            case "Matière":
+            case "Spécialité":
                 comparator = Comparator.comparing(
                         group -> valeur(group.getSubject()),
                         String.CASE_INSENSITIVE_ORDER
                 );
+                break;
+
+            case "Niveau d’études":
+                comparator = Comparator
+                        .comparingInt((StudentGroup group) -> {
+                            Level niveau = group.getLevelId() == null
+                                    ? null
+                                    : niveauxParId.get(group.getLevelId());
+                            return niveau == null
+                                    ? Integer.MAX_VALUE
+                                    : niveau.getDisplayOrder();
+                        })
+                        .thenComparing(
+                                group -> valeur(codeNiveau(group)),
+                                String.CASE_INSENSITIVE_ORDER
+                        );
                 break;
 
             case "Nombre d'étudiants":
@@ -502,6 +598,18 @@ public class GroupsFragment extends Fragment
         liste.sort(comparator);
     }
 
+    private String optionNiveau(Level niveau) {
+        return "Niveau : " + valeur(niveau.getCode()) + " — "
+                + valeur(niveau.getName());
+    }
+
+    private String codeNiveau(StudentGroup group) {
+        Level niveau = group.getLevelId() == null
+                ? null
+                : niveauxParId.get(group.getLevelId());
+        return niveau == null ? "" : valeur(niveau.getCode());
+    }
+
     private int compter(Map<Integer, Integer> valeurs, int groupId) {
         Integer nombre = valeurs.get(groupId);
         return nombre == null ? 0 : nombre;
@@ -520,6 +628,19 @@ public class GroupsFragment extends Fragment
                 )
                 .addToBackStack("group_form")
                 .commit();
+    }
+
+    private void onGroupClicked(@NonNull StudentGroup group) {
+        if (!isSelectionMode()) {
+            ouvrirDetail(group);
+            return;
+        }
+
+        Bundle result = new Bundle();
+        result.putInt(RESULT_GROUP_ID, group.getId());
+        result.putString(RESULT_GROUP_LABEL, group.getName());
+        getParentFragmentManager().setFragmentResult(RESULT_KEY, result);
+        getParentFragmentManager().popBackStack();
     }
 
     private void ouvrirDetail(@NonNull StudentGroup group) {
@@ -551,6 +672,7 @@ public class GroupsFragment extends Fragment
         tilGroupsSearch = null;
         etGroupsSearch = null;
         tvGroupsCount = null;
+        tvGroupsYearSubtitle = null;
         filterSortContainer = null;
         btnSearch = null;
         btnSort = null;

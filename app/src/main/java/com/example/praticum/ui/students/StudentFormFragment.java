@@ -12,8 +12,6 @@ import android.util.Patterns;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
-import android.widget.AutoCompleteTextView;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -30,10 +28,8 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
-import com.example.praticum.data.entity.Level;
+import com.example.praticum.core.common.FormExitConfirmation;
 import com.example.praticum.data.entity.Student;
-import com.example.praticum.data.entity.StudentGroup;
-import com.example.praticum.ui.levels.LevelViewModel;
 import com.github.chrisbanes.photoview.PhotoView;
 import com.google.android.material.textfield.TextInputEditText;
 import com.google.android.material.textfield.TextInputLayout;
@@ -56,7 +52,6 @@ public class StudentFormFragment extends Fragment {
     private TextInputLayout tilLastName;
     private TextInputLayout tilFirstName;
     private TextInputLayout tilMatricule;
-    private TextInputLayout tilGroup;
     private TextInputLayout tilEmail;
 
     private TextInputEditText etLastName;
@@ -67,9 +62,6 @@ public class StudentFormFragment extends Fragment {
     private TextInputEditText etEmail;
     private TextInputEditText etNotes;
 
-    private AutoCompleteTextView actGroup;
-
-    private TextView tvGroupOrder;
     private ImageView ivStudentCard;
     private LinearLayout layoutCardEmpty;
     private LinearLayout layoutCardImageActions;
@@ -79,7 +71,6 @@ public class StudentFormFragment extends Fragment {
     private Uri cardImageUri;
 
     private StudentViewModel viewModel;
-    private LevelViewModel levelViewModel;
 
     private String studentId;
     private boolean isEditMode = false;
@@ -89,10 +80,6 @@ public class StudentFormFragment extends Fragment {
     // Étudiant chargé en mode modification (champs non éditables conservés)
     private Student existingStudent;
 
-    private final List<StudentGroup> groups = new ArrayList<>();
-    private final List<Level> levels = new ArrayList<>();
-    private ArrayAdapter<String> groupAdapter;
-    private Integer selectedGroupId;
 
     private ActivityResultLauncher<String[]> imagePickerLauncher;
     private ActivityResultLauncher<IntentSenderRequest> scannerLauncher;
@@ -203,16 +190,10 @@ public class StudentFormFragment extends Fragment {
         viewModel = new ViewModelProvider(this)
                 .get(StudentViewModel.class);
 
-        levelViewModel = new ViewModelProvider(this)
-                .get(LevelViewModel.class);
-
         initializeViews(view);
         configureHeader(view);
-        configureGroups();
         configureButtons(view);
         observeData();
-
-        updateGroupOrderLabel();
 
         viewModel.loadStudents();
 
@@ -230,7 +211,6 @@ public class StudentFormFragment extends Fragment {
         tilLastName = view.findViewById(R.id.tilStudentLastName);
         tilFirstName = view.findViewById(R.id.tilStudentFirstName);
         tilMatricule = view.findViewById(R.id.tilStudentMatricule);
-        tilGroup = view.findViewById(R.id.tilStudentGroup);
         tilEmail = view.findViewById(R.id.tilStudentEmail);
 
         etLastName = view.findViewById(R.id.etStudentLastName);
@@ -241,8 +221,6 @@ public class StudentFormFragment extends Fragment {
         etEmail = view.findViewById(R.id.etStudentEmail);
         etNotes = view.findViewById(R.id.etStudentNotes);
 
-        actGroup = view.findViewById(R.id.actStudentGroup);
-        tvGroupOrder = view.findViewById(R.id.tvStudentDetailGroupOrder);
 
         ivStudentCard = view.findViewById(R.id.ivStudentFormCard);
         layoutCardEmpty = view.findViewById(
@@ -267,39 +245,12 @@ public class StudentFormFragment extends Fragment {
         );
     }
 
-    private void configureGroups() {
-        groupAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                new ArrayList<>()
-        );
-
-        actGroup.setAdapter(groupAdapter);
-
-        actGroup.setOnClickListener(v -> {
-            if (canEdit()) {
-                actGroup.showDropDown();
-            }
-        });
-
-        actGroup.setOnItemClickListener(
-                (parent, itemView, position, id) -> {
-                    if (position >= 0 && position < groups.size()) {
-                        selectedGroupId = groups.get(position).getId();
-                    }
-
-                    tilGroup.setError(null);
-                    updateGroupOrderLabel();
-                }
-        );
-    }
-
     private boolean canEdit() {
         return loadingFinished && !saving;
     }
 
     private void configureButtons(View view) {
-        btnCancel.setOnClickListener(v -> closeForm());
+        btnCancel.setOnClickListener(v -> FormExitConfirmation.show(this, this::closeForm));
 
         btnSave.setOnClickListener(v -> saveStudent());
 
@@ -319,32 +270,6 @@ public class StudentFormFragment extends Fragment {
     }
 
     private void observeData() {
-        viewModel.getGroups().observe(
-                getViewLifecycleOwner(),
-                liste -> {
-                    groups.clear();
-
-                    if (liste != null) {
-                        groups.addAll(liste);
-                    }
-
-                    refreshGroupLabels();
-                }
-        );
-
-        levelViewModel.getLevels().observe(
-                getViewLifecycleOwner(),
-                liste -> {
-                    levels.clear();
-
-                    if (liste != null) {
-                        levels.addAll(liste);
-                    }
-
-                    refreshGroupLabels();
-                }
-        );
-
         viewModel.getSelectedStudent().observe(
                 getViewLifecycleOwner(),
                 student -> {
@@ -404,46 +329,6 @@ public class StudentFormFragment extends Fragment {
         );
     }
 
-    /**
-     * Reconstruit la liste déroulante : « code - niveau »
-     * (par exemple « G1 - Licence 1 »). Appelée à l'arrivée des groupes
-     * et à l'arrivée des niveaux, quel que soit l'ordre.
-     */
-    private void refreshGroupLabels() {
-        if (groupAdapter == null) {
-            return;
-        }
-
-        List<String> libelles = new ArrayList<>();
-
-        for (StudentGroup group : groups) {
-            libelles.add(groupLabel(group));
-        }
-
-        groupAdapter.clear();
-        groupAdapter.addAll(libelles);
-        groupAdapter.notifyDataSetChanged();
-
-        showSelectedGroup();
-    }
-
-    private String groupLabel(@NonNull StudentGroup group) {
-        String code = group.getCode() == null ? "" : group.getCode();
-        Integer levelId = group.getLevelId();
-
-        if (levelId != null) {
-            for (Level level : levels) {
-                if (level.getId() == levelId
-                        && level.getName() != null
-                        && !level.getName().trim().isEmpty()) {
-                    return code + " - " + level.getName();
-                }
-            }
-        }
-
-        return code;
-    }
-
     private void prefill(@NonNull Student student) {
         etLastName.setText(student.getLastName());
         etFirstName.setText(student.getFirstName());
@@ -453,9 +338,6 @@ public class StudentFormFragment extends Fragment {
         etEmail.setText(student.getEmail());
         etNotes.setText(student.getNotes());
 
-        selectedGroupId = student.getGroupId();
-        showSelectedGroup();
-
         String imageUri = student.getCardImageUri();
 
         if (imageUri != null && !imageUri.trim().isEmpty()) {
@@ -463,44 +345,6 @@ public class StudentFormFragment extends Fragment {
             displayCardImage();
         }
 
-        updateGroupOrderLabel();
-    }
-
-    private void showSelectedGroup() {
-        if (selectedGroupId == null
-                || actGroup == null
-                || groupAdapter == null) {
-            return;
-        }
-
-        for (int i = 0; i < groups.size(); i++) {
-            if (groups.get(i).getId() == selectedGroupId) {
-                actGroup.setText(groupAdapter.getItem(i), false);
-                return;
-            }
-        }
-    }
-
-    private void updateGroupOrderLabel() {
-        if (tvGroupOrder == null) {
-            return;
-        }
-
-        boolean sameGroup = isEditMode
-                && existingStudent != null
-                && selectedGroupId != null
-                && selectedGroupId == existingStudent.getGroupId();
-
-        if (sameGroup) {
-            tvGroupOrder.setText(
-                    "Ordre dans le groupe : "
-                            + existingStudent.getGroupOrder()
-            );
-        } else {
-            tvGroupOrder.setText(
-                    "Ordre dans le groupe : attribué automatiquement"
-            );
-        }
     }
 
     private void saveStudent() {
@@ -517,7 +361,6 @@ public class StudentFormFragment extends Fragment {
         String matricule = getText(etMatricule);
         String email = getText(etEmail);
         String notes = getText(etNotes);
-        String groupText = getText(actGroup);
 
         boolean valid = true;
 
@@ -528,14 +371,6 @@ public class StudentFormFragment extends Fragment {
 
         if (firstName.isEmpty()) {
             tilFirstName.setError("Le prénom est obligatoire.");
-            valid = false;
-        }
-
-        if (groupText.isEmpty()) {
-            tilGroup.setError("Sélectionnez un groupe.");
-            valid = false;
-        } else if (selectedGroupId == null) {
-            tilGroup.setError("Sélectionnez un groupe dans la liste.");
             valid = false;
         }
 
@@ -561,21 +396,13 @@ public class StudentFormFragment extends Fragment {
                 return;
             }
 
-            // On repart de l'étudiant chargé : identifiant, ordre et
-            // autres données conservés.
+            // On repart de la fiche chargée pour conserver son identifiant.
             student = existingStudent;
             student.setLastName(lastName);
             student.setFirstName(firstName);
-            student.setGroupId(selectedGroupId);
 
         } else {
-            // L'ordre dans le groupe est attribué par le repository.
-            student = new Student(
-                    lastName,
-                    firstName,
-                    selectedGroupId,
-                    0
-            );
+                        student = new Student(lastName, firstName);
         }
 
         student.setLastNameArabic(
@@ -602,7 +429,6 @@ public class StudentFormFragment extends Fragment {
         tilLastName.setError(null);
         tilFirstName.setError(null);
         tilMatricule.setError(null);
-        tilGroup.setError(null);
         tilEmail.setError(null);
     }
 
@@ -614,7 +440,6 @@ public class StudentFormFragment extends Fragment {
         if (etMatricule != null) etMatricule.setEnabled(enabled);
         if (etEmail != null) etEmail.setEnabled(enabled);
         if (etNotes != null) etNotes.setEnabled(enabled);
-        if (actGroup != null) actGroup.setEnabled(enabled);
 
         if (btnSave != null) {
             btnSave.setEnabled(enabled && !saving);
@@ -626,12 +451,6 @@ public class StudentFormFragment extends Fragment {
     }
 
     private String getText(TextInputEditText editText) {
-        return editText.getText() == null
-                ? ""
-                : editText.getText().toString().trim();
-    }
-
-    private String getText(AutoCompleteTextView editText) {
         return editText.getText() == null
                 ? ""
                 : editText.getText().toString().trim();
@@ -844,7 +663,6 @@ public class StudentFormFragment extends Fragment {
         tilLastName = null;
         tilFirstName = null;
         tilMatricule = null;
-        tilGroup = null;
         tilEmail = null;
 
         etLastName = null;
@@ -855,13 +673,20 @@ public class StudentFormFragment extends Fragment {
         etEmail = null;
         etNotes = null;
 
-        actGroup = null;
-        tvGroupOrder = null;
         ivStudentCard = null;
         layoutCardEmpty = null;
         layoutCardImageActions = null;
         btnSave = null;
         btnCancel = null;
-        groupAdapter = null;
     }
 }
+
+
+
+
+
+
+
+
+
+

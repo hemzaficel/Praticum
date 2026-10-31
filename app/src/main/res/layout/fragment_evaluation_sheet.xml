@@ -303,7 +303,7 @@
                     android:overScrollMode="never"
                     android:paddingTop="8dp" />
 
-                <!-- Section de recherche et d'ajout par Groupe et Ordre -->
+                <!-- Sélection et ajout d’un étudiant dans l’équipe -->
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -322,11 +322,10 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
-                        android:text="Entrez le groupe et le numéro d'ordre de l'étudiant"
+                        android:text="Recherchez l’étudiant dans le répertoire."
                         android:textColor="@color/text_secondary"
                         android:textSize="12sp" />
 
-                    <!-- Champs Groupe et N° Ordre côte à côte -->
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -334,76 +333,63 @@
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
-                        <!-- Champ Groupe (Menu déroulant de sélection) -->
                         <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/tilSearchGroup"
-                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
+                            android:id="@+id/tilEvaluationSelectedStudent"
+                            style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
-                            android:layout_weight="1.3"
-                            android:hint="Groupe"
+                            android:layout_weight="1"
+                            android:hint="Étudiant"
                             app:boxBackgroundColor="@color/white"
-                            app:boxBackgroundMode="outline"
                             app:boxCornerRadiusBottomEnd="12dp"
                             app:boxCornerRadiusBottomStart="12dp"
                             app:boxCornerRadiusTopEnd="12dp"
                             app:boxCornerRadiusTopStart="12dp"
-                            app:boxStrokeColor="@color/primary"
-                            app:boxStrokeWidth="1dp"
-                            app:hintTextColor="@color/text_secondary">
+                            app:boxStrokeColor="@color/primary">
 
-                            <AutoCompleteTextView
-                                android:id="@+id/autoCompleteSearchGroup"
+                            <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                                android:id="@+id/actEvaluationSelectedStudent"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:minHeight="50dp"
-                                android:inputType="none"
+                                android:clickable="false"
                                 android:focusable="false"
-                                android:clickable="true"
+                                android:inputType="none"
+                                android:minHeight="56dp"
+                                android:paddingStart="12dp"
+                                android:paddingEnd="12dp"
                                 android:textColor="@color/text_primary"
                                 android:textSize="14sp" />
-
                         </com.google.android.material.textfield.TextInputLayout>
 
-                        <!-- Champ N° Ordre -->
-                        <com.google.android.material.textfield.TextInputLayout
-                            android:id="@+id/tilSearchOrder"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="0.9"
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btnChooseEvaluationStudent"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="56dp"
+                            android:layout_height="56dp"
                             android:layout_marginStart="8dp"
-                            android:hint="N° Ordre"
-                            app:boxBackgroundColor="@color/white"
-                            app:boxBackgroundMode="outline"
-                            app:boxCornerRadiusBottomEnd="12dp"
-                            app:boxCornerRadiusBottomStart="12dp"
-                            app:boxCornerRadiusTopEnd="12dp"
-                            app:boxCornerRadiusTopStart="12dp"
-                            app:boxStrokeColor="@color/primary"
-                            app:boxStrokeWidth="1dp"
-                            app:hintTextColor="@color/text_secondary">
-
-                            <com.google.android.material.textfield.TextInputEditText
-                                android:id="@+id/etSearchOrder"
-                                android:layout_width="match_parent"
-                                android:layout_height="wrap_content"
-                                android:minHeight="50dp"
-                                android:inputType="number"
-                                android:maxLines="1"
-                                android:textSize="14sp" />
-
-                        </com.google.android.material.textfield.TextInputLayout>
-
+                            android:contentDescription="Rechercher un étudiant"
+                            android:insetTop="0dp"
+                            android:insetBottom="0dp"
+                            android:minWidth="0dp"
+                            android:minHeight="0dp"
+                            android:padding="0dp"
+                            android:text=""
+                            app:cornerRadius="12dp"
+                            app:icon="@drawable/ic_search"
+                            app:iconGravity="textStart"
+                            app:iconPadding="0dp"
+                            app:iconSize="20dp"
+                            app:iconTint="@color/primary"
+                            app:strokeColor="@color/color_outline" />
                     </LinearLayout>
 
-                    <!-- Bouton de validation de recherche/ajout -->
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnAddStudentToTeam"
                         style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="match_parent"
                         android:layout_height="48dp"
                         android:layout_marginTop="8dp"
-                        android:text="Rechercher et ajouter à l’équipe"
+                        android:text="Ajouter à l’équipe"
                         android:textAllCaps="false"
                         android:textColor="@color/primary_dark"
                         app:cornerRadius="10dp"
@@ -416,6 +402,74 @@
             </LinearLayout>
 
         </com.google.android.material.card.MaterialCardView>
+
+        <!-- Document de l'équipe -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            app:cardBackgroundColor="@color/white"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/color_outline"
+            app:strokeWidth="1dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="14dp">
+
+                <ImageView
+                    android:layout_width="30dp"
+                    android:layout_height="36dp"
+                    android:contentDescription="@null"
+                    android:src="@drawable/ic_scanner"
+                    app:tint="@color/primary" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Travail de l'équipe"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tvEvaluationAttachment"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="3dp"
+                        android:text="Aucun document joint"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                </LinearLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btnScanTeamResponse"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:minWidth="0dp"
+                    android:text="Scanner"
+                    android:textAllCaps="false"
+                    android:textColor="@color/primary_dark"
+                    app:cornerRadius="10dp"
+                    app:strokeColor="@color/color_outline" />
+
+            </LinearLayout>
+
+        </com.google.android.material.card.MaterialCardView>
+
 
         <!-- Critères d'évaluation -->
         <TextView
@@ -499,128 +553,6 @@
 
         </com.google.android.material.card.MaterialCardView>
 
-        <!-- Document de l'équipe -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/white"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/color_outline"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="14dp">
-
-                <ImageView
-                    android:layout_width="30dp"
-                    android:layout_height="36dp"
-                    android:contentDescription="@null"
-                    android:src="@drawable/ic_scanner"
-                    app:tint="@color/primary" />
-
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_weight="1"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="Travail de l'équipe"
-                        android:textColor="@color/text_primary"
-                        android:textSize="14sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvEvaluationAttachment"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="3dp"
-                        android:text="Aucun document joint"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12sp" />
-
-                </LinearLayout>
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnScanTeamResponse"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="wrap_content"
-                    android:layout_height="44dp"
-                    android:minWidth="0dp"
-                    android:text="Scanner"
-                    android:textAllCaps="false"
-                    android:textColor="@color/primary_dark"
-                    app:cornerRadius="10dp"
-                    app:strokeColor="@color/color_outline" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Navigation entre les équipes -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            app:cardBackgroundColor="@color/white"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/color_outline"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:padding="8dp">
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnPreviousEvaluation"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:textAllCaps="false"
-                    app:cornerRadius="10dp"
-                    app:icon="@drawable/ic_arrow_left"
-                    app:iconGravity="textStart"
-                    app:strokeColor="@color/color_outline" />
-
-                <TextView
-                    android:id="@+id/tvEvaluationPosition"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="10dp"
-                    android:text="1 / 5"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
-
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btnNextEvaluation"
-                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                    android:layout_width="0dp"
-                    android:layout_height="48dp"
-                    android:layout_weight="1"
-                    android:textAllCaps="false"
-                    app:cornerRadius="10dp"
-                    app:icon="@drawable/ic_arrow_right"
-                    app:iconGravity="textEnd"
-                    app:strokeColor="@color/color_outline" />
-
-            </LinearLayout>
-
-        </com.google.android.material.card.MaterialCardView>
 
         <!-- Enregistrement -->
         <com.google.android.material.button.MaterialButton

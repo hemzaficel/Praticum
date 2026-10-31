@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.FormExitConfirmation;
 import com.example.praticum.data.entity.Level;
 import com.google.android.material.card.MaterialCardView;
 import com.google.android.material.textfield.MaterialAutoCompleteTextView;
@@ -178,7 +179,7 @@ public class LevelFormFragment extends Fragment {
     private void configurerBoutons() {
 
         if (btnCancel != null) {
-            btnCancel.setOnClickListener(v -> retour());
+            btnCancel.setOnClickListener(v -> FormExitConfirmation.show(this, this::retour));
         }
 
         if (btnSave != null) {

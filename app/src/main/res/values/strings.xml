@@ -4,6 +4,7 @@
     <string name="nav_home">Accueil</string>
     <string name="nav_groups">Groupes</string>
     <string name="nav_students">Étudiants</string>
+    <string name="nav_enrollments">Inscriptions</string>
     <string name="nav_sessions">Séances</string>
     <string name="nav_reports">Bilans</string>
     <string name="action_save">Enregistrer</string>

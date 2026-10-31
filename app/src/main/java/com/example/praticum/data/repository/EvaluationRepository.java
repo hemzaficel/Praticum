@@ -33,10 +33,7 @@ public class EvaluationRepository {
         return evaluationDao.getBySessionId(sessionId);
     }
 
-    /**
-     * Démarre une évaluation.
-     * Une seule évaluation est autorisée par séance.
-     */
+    /** Démarre toujours une nouvelle évaluation indépendante pour la séance. */
     public int startEvaluation(int sessionId) {
         if (sessionId <= 0) {
             throw new IllegalArgumentException(
@@ -46,14 +43,6 @@ public class EvaluationRepository {
         final int[] evaluationId = {-1};
 
         database.runInTransaction(() -> {
-            Evaluation existing =
-                    evaluationDao.getBySessionId(sessionId);
-
-            if (existing != null) {
-                evaluationId[0] = existing.getId();
-                return;
-            }
-
             Evaluation evaluation = new Evaluation(sessionId);
             evaluation.setScoringMode(
                     Evaluation.SCORING_MODE_COMMON);

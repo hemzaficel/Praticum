@@ -76,7 +76,7 @@ public class EvaluationTeamAdapter
 
         holder.details.setText(
                 "Ordre : "
-                        + student.getGroupOrder()
+                        + entry.getGroupOrder()
                         + " • "
                         + groupName
         );

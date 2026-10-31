@@ -1,6 +1,8 @@
 package com.example.praticum.ui.attendance;
 
 import android.app.DatePickerDialog;
+import android.content.ContentResolver;
+import android.net.Uri;
 import android.app.TimePickerDialog;
 import android.os.Bundle;
 import android.os.Handler;
@@ -10,11 +12,12 @@ import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -23,6 +26,10 @@ import com.example.praticum.R;
 import com.example.praticum.data.database.AppDatabase;
 import com.example.praticum.data.database.DatabaseProvider;
 import com.example.praticum.data.entity.AttendanceRecord;
+import com.example.praticum.data.entity.AcademicYear;
+import com.example.praticum.data.entity.Level;
+import com.example.praticum.data.export.AttendanceExcelExporter;
+import com.example.praticum.ui.groups.GroupsFragment;
 import com.example.praticum.data.entity.SessionGroup;
 import com.example.praticum.data.entity.Student;
 import com.example.praticum.data.entity.StudentGroup;
@@ -45,6 +52,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.io.OutputStream;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -67,9 +75,6 @@ public class AttendanceSheetFragment extends Fragment {
 
     private StudentGroup selectedStudentGroup;
     private SessionGroup currentSessionGroup;
-
-    private final List<StudentGroup> availableGroups =
-            new ArrayList<>();
 
     private final List<AttendanceRow> allRecords =
             new ArrayList<>();
@@ -94,13 +99,14 @@ public class AttendanceSheetFragment extends Fragment {
     private final Set<Integer> dirtyGroupIds =
             new LinkedHashSet<>();
 
-    private ArrayAdapter<String> groupAdapter;
-
     private int currentIndex = 0;
     private int groupLoadGeneration = 0;
 
     private boolean ignoreSearchChanges = false;
     private boolean isSaving = false;
+    private boolean isExporting = false;
+    private AttendanceExcelExporter.Data pendingExportData;
+    private ActivityResultLauncher<String> exportFileLauncher;
 
     // En-tête
     private View btnBack;
@@ -118,6 +124,7 @@ public class AttendanceSheetFragment extends Fragment {
     private TextInputEditText etRoom;
 
     private MaterialAutoCompleteTextView actGroup;
+    private View btnChooseGroup;
 
     // Progression et compteurs
     private android.widget.TextView tvGroupStudentCount;
@@ -152,10 +159,14 @@ public class AttendanceSheetFragment extends Fragment {
     private View btnPrevious;
     private View btnNext;
     private View btnSave;
+    private View btnExport;
     private android.widget.TextView tvSaveInfo;
 
     public AttendanceSheetFragment() {
-        // Constructeur obligatoire pour Android.
+        exportFileLauncher = registerForActivityResult(
+                new ActivityResultContracts.CreateDocument("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"),
+                this::onExportDestinationSelected
+        );
     }
 
     @Nullable
@@ -224,11 +235,13 @@ public class AttendanceSheetFragment extends Fragment {
         configureStudentSearch();
         configureNavigation();
         configureSaveButton();
+        configureExportButton();
 
         if (sessionId <= 0) {
             showNoStudents();
 
             actGroup.setEnabled(false);
+            btnChooseGroup.setEnabled(false);
             btnSave.setEnabled(false);
 
             Toast.makeText(
@@ -240,7 +253,7 @@ public class AttendanceSheetFragment extends Fragment {
             return;
         }
 
-        loadAvailableGroups();
+        afficherAucunGroupeSelectionne();
     }
 
     private void bindViews(View view) {
@@ -286,6 +299,10 @@ public class AttendanceSheetFragment extends Fragment {
 
         actGroup = view.findViewById(
                 R.id.actAttendanceGroup
+        );
+
+        btnChooseGroup = view.findViewById(
+                R.id.btnChooseAttendanceGroup
         );
 
         tvGroupStudentCount = view.findViewById(
@@ -383,6 +400,7 @@ public class AttendanceSheetFragment extends Fragment {
         btnSave = view.findViewById(
                 R.id.btnSaveAttendanceSheet
         );
+        btnExport = view.findViewById(R.id.btnExportAttendanceExcel);
 
         tvSaveInfo = view.findViewById(
                 R.id.tvAttendanceSheetSaveInfo
@@ -408,109 +426,88 @@ public class AttendanceSheetFragment extends Fragment {
     // Chargement des groupes depuis Room
     // ---------------------------------------------------------
 
-    private void loadAvailableGroups() {
+    private void configureGroupSelector() {
+        btnChooseGroup.setOnClickListener(v -> ouvrirSelecteurGroupes());
+
+        getParentFragmentManager().setFragmentResultListener(
+                GroupsFragment.RESULT_KEY,
+                getViewLifecycleOwner(),
+                (key, result) -> {
+                    int groupId = result.getInt(
+                            GroupsFragment.RESULT_GROUP_ID,
+                            -1
+                    );
+                    if (groupId > 0) {
+                        chargerGroupeSelectionne(groupId);
+                    }
+                }
+        );
+    }
+
+    private void ouvrirSelecteurGroupes() {
+        if (isSaving || !isAdded()) {
+            return;
+        }
+
+        saveCurrentGroupFields();
+        requireActivity()
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .replace(
+                        R.id.mainContainer,
+                        GroupsFragment.newInstanceForSelection()
+                )
+                .addToBackStack("attendance_choose_group")
+                .commit();
+    }
+
+    private void chargerGroupeSelectionne(int groupId) {
         databaseExecutor.execute(() -> {
             try {
-                List<StudentGroup> groups =
-                        studentGroupRepository.getAll();
-
+                StudentGroup group = studentGroupRepository.getById(groupId);
                 mainHandler.post(() -> {
                     if (!isViewReady()) {
                         return;
                     }
-
-                    availableGroups.clear();
-
-                    if (groups != null) {
-                        availableGroups.addAll(groups);
-                    }
-
-                    List<String> groupNames =
-                            new ArrayList<>();
-
-                    for (StudentGroup group : availableGroups) {
-                        groupNames.add(safe(group.getName()));
-                    }
-
-                    groupAdapter = new ArrayAdapter<>(
-                            requireContext(),
-                            android.R.layout
-                                    .simple_dropdown_item_1line,
-                            groupNames
-                    );
-
-                    actGroup.setAdapter(groupAdapter);
-
-                    if (availableGroups.isEmpty()) {
-                        showNoStudents();
-
-                        actGroup.setEnabled(false);
-                        btnSave.setEnabled(false);
-
+                    if (group == null) {
                         Toast.makeText(
                                 requireContext(),
-                                "Aucun groupe disponible.",
+                                "Le groupe sélectionné est introuvable.",
                                 Toast.LENGTH_LONG
                         ).show();
-
                         return;
                     }
-
-                    actGroup.setEnabled(true);
-
-                    StudentGroup firstGroup =
-                            availableGroups.get(0);
-
-                    actGroup.setText(
-                            safe(firstGroup.getName()),
-                            false
-                    );
-
-                    loadGroup(firstGroup);
+                    loadGroup(group);
                 });
-
             } catch (Exception exception) {
                 mainHandler.post(() -> {
-                    if (!isViewReady()) {
-                        return;
+                    if (isViewReady()) {
+                        Toast.makeText(
+                                requireContext(),
+                                errorMessage(exception),
+                                Toast.LENGTH_LONG
+                        ).show();
                     }
-
-                    showNoStudents();
-
-                    actGroup.setEnabled(false);
-                    btnSave.setEnabled(false);
-
-                    Toast.makeText(
-                            requireContext(),
-                            errorMessage(exception),
-                            Toast.LENGTH_LONG
-                    ).show();
                 });
             }
         });
     }
 
-    private void configureGroupSelector() {
-        actGroup.setOnItemClickListener(
-                (parent, itemView, position, id) -> {
-
-                    if (position < 0
-                            || position >= availableGroups.size()) {
-                        return;
-                    }
-
-                    StudentGroup group =
-                            availableGroups.get(position);
-
-                    if (selectedStudentGroup != null
-                            && selectedStudentGroup.getId()
-                            == group.getId()) {
-                        return;
-                    }
-
-                    loadGroup(group);
-                }
-        );
+    private void afficherAucunGroupeSelectionne() {
+        selectedStudentGroup = null;
+        currentSessionGroup = null;
+        actGroup.setText("", false);
+        actGroup.setEnabled(true);
+        btnChooseGroup.setEnabled(true);
+        btnSave.setEnabled(false);
+        cardCurrentStudent.setVisibility(View.GONE);
+        tvStudentPosition.setText("Sélectionnez un groupe pour commencer.");
+        tvGroupStudentCount.setText("Aucun groupe sélectionné.");
+        allRecords.clear();
+        filteredRecords.clear();
+        currentIndex = 0;
+        updateCounters();
+        updateNavigationButtons();
     }
 
     private void loadGroup(StudentGroup group) {
@@ -547,6 +544,7 @@ public class AttendanceSheetFragment extends Fragment {
         }
 
         actGroup.setEnabled(false);
+        btnChooseGroup.setEnabled(false);
         btnSave.setEnabled(false);
 
         cardCurrentStudent.setVisibility(View.GONE);
@@ -562,6 +560,11 @@ public class AttendanceSheetFragment extends Fragment {
 
                 List<Student> students =
                         studentRepository.getByGroupId(groupId);
+
+                Map<String, Integer> groupOrders = new HashMap<>();
+                for (com.example.praticum.data.entity.Enrollment enrollment : database.enrollmentDao().getByGroup(groupId)) {
+                    groupOrders.put(enrollment.getStudentId(), enrollment.getGroupOrder());
+                }
 
                 List<AttendanceRecord> savedRecords =
                         sessionGroup != null
@@ -592,7 +595,7 @@ public class AttendanceSheetFragment extends Fragment {
                         );
 
                         rows.add(
-                                new AttendanceRow(student, status)
+                                new AttendanceRow(student, status, groupOrders.containsKey(student.getStudentId()) ? groupOrders.get(student.getStudentId()) : 0)
                         );
                     }
                 }
@@ -637,6 +640,7 @@ public class AttendanceSheetFragment extends Fragment {
                     }
 
                     actGroup.setEnabled(true);
+                    btnChooseGroup.setEnabled(true);
                     btnSave.setEnabled(false);
 
                     Toast.makeText(
@@ -685,6 +689,7 @@ public class AttendanceSheetFragment extends Fragment {
         );
 
         actGroup.setEnabled(true);
+        btnChooseGroup.setEnabled(true);
         btnSave.setEnabled(true);
 
         populateGroupFields();
@@ -990,7 +995,7 @@ public class AttendanceSheetFragment extends Fragment {
         );
 
         tvGroupOrder.setText(
-                String.valueOf(student.getGroupOrder())
+                String.valueOf(row.groupOrder)
         );
 
         tvInitials.setText(getInitials(fullName));
@@ -1202,6 +1207,84 @@ public class AttendanceSheetFragment extends Fragment {
         );
     }
 
+    private void configureExportButton() {
+        btnExport.setOnClickListener(v -> exportCurrentGroup());
+    }
+
+    private void exportCurrentGroup() {
+        if (isSaving || isExporting) return;
+        if (selectedStudentGroup == null || currentSessionGroup == null) {
+            Toast.makeText(requireContext(), "Sélectionnez un groupe avant l’export.", Toast.LENGTH_SHORT).show();
+            return;
+        }
+        saveCurrentGroupFields();
+        final StudentGroup group = selectedStudentGroup;
+        final String groupCode = safe(group.getCode());
+        final String groupName = safe(group.getName());
+        final String specialty = safe(group.getSubject());
+        final String date = getText(etDate);
+        final String start = getText(etStartTime);
+        final String end = getText(etEndTime);
+        final String room = getText(etRoom);
+        final List<AttendanceExcelExporter.StudentLine> students = new ArrayList<>();
+        for (AttendanceRow row : allRecords) {
+            Student student = row.student;
+            students.add(new AttendanceExcelExporter.StudentLine(row.groupOrder,
+                    student.getMatricule(), student.getLastName(), student.getFirstName(),
+                    student.getLastNameArabic(), student.getFirstNameArabic(), row.status));
+        }
+        isExporting = true;
+        btnExport.setEnabled(false);
+        databaseExecutor.execute(() -> {
+            try {
+                Level level = group.getLevelId() == null ? null : database.levelDao().getById(group.getLevelId());
+                AcademicYear year = database.academicYearDao().getById(group.getAcademicYearId());
+                String levelName = level == null ? "" : safe(level.getCode())
+                        + (safe(level.getName()).isEmpty() ? "" : " — " + safe(level.getName()));
+                AttendanceExcelExporter.Data data = new AttendanceExcelExporter.Data(
+                        sessionTitle, groupName, groupCode, specialty, levelName,
+                        year == null ? "" : year.getLabel(), date, start, end, room, students);
+                String fileName = "Presence_" + safeFilePart(groupCode.isEmpty() ? groupName : groupCode)
+                        + "_" + safeFilePart(date.isEmpty() ? "seance" : date.replace('/', '-')) + ".xlsx";
+                mainHandler.post(() -> {
+                    if (!isViewReady()) return;
+                    pendingExportData = data;
+                    exportFileLauncher.launch(fileName);
+                });
+            } catch (Exception exception) {
+                mainHandler.post(() -> finishExport(errorMessage(exception)));
+            }
+        });
+    }
+
+    private void onExportDestinationSelected(Uri uri) {
+        AttendanceExcelExporter.Data data = pendingExportData;
+        pendingExportData = null;
+        if (uri == null) { finishExport("Export annulé."); return; }
+        if (data == null || !isAdded()) { finishExport("Impossible de préparer le fichier Excel."); return; }
+        ContentResolver resolver = requireContext().getContentResolver();
+        databaseExecutor.execute(() -> {
+            try (OutputStream output = resolver.openOutputStream(uri, "w")) {
+                if (output == null) throw new IllegalStateException("Impossible d’écrire le fichier sélectionné.");
+                AttendanceExcelExporter.write(output, data);
+                mainHandler.post(() -> finishExport("Feuille de présence exportée en Excel."));
+            } catch (Exception exception) {
+                mainHandler.post(() -> finishExport(errorMessage(exception)));
+            }
+        });
+    }
+
+    private void finishExport(String message) {
+        isExporting = false;
+        if (!isViewReady()) return;
+        if (btnExport != null) btnExport.setEnabled(currentSessionGroup != null);
+        Toast.makeText(requireContext(), message, Toast.LENGTH_SHORT).show();
+    }
+
+    private String safeFilePart(String value) {
+        String cleaned = value == null ? "" : value.trim().replaceAll("[\\\\/:*?\\\"<>|]", "_");
+        return cleaned.isEmpty() ? "groupe" : cleaned;
+    }
     private void saveAttendanceSheet() {
         if (isSaving) {
             return;
@@ -1287,6 +1370,7 @@ public class AttendanceSheetFragment extends Fragment {
 
         btnSave.setEnabled(false);
         actGroup.setEnabled(false);
+        btnChooseGroup.setEnabled(false);
 
         databaseExecutor.execute(() -> {
             try {
@@ -1324,6 +1408,7 @@ public class AttendanceSheetFragment extends Fragment {
 
                     btnSave.setEnabled(true);
                     actGroup.setEnabled(true);
+                    btnChooseGroup.setEnabled(true);
 
                     Toast.makeText(
                             requireContext(),
@@ -1460,14 +1545,16 @@ public class AttendanceSheetFragment extends Fragment {
     private static class AttendanceRow {
 
         private final Student student;
+        private final int groupOrder;
         private String status;
 
         AttendanceRow(
                 Student student,
-                String status) {
+                String status, int groupOrder) {
 
             this.student = student;
             this.status = status;
+            this.groupOrder = groupOrder;
         }
 
         boolean isUnmarked() {

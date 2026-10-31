@@ -267,6 +267,13 @@ public class SessionsFragment extends Fragment {
                 this::afficherListe
         );
 
+        viewModel.getSessionCardSummaries().observe(
+                getViewLifecycleOwner(),
+                summaries -> {
+                    if (adapter != null) adapter.submitSummaries(summaries);
+                }
+        );
+
         viewModel.getOperationResult().observe(
                 getViewLifecycleOwner(),
                 resultat -> {
@@ -293,6 +300,7 @@ public class SessionsFragment extends Fragment {
         }
 
         adapter.submitList(sessions);
+        viewModel.loadSessionCardSummaries(sessions);
 
         int nombre = sessions == null ? 0 : sessions.size();
         boolean listeVide = nombre == 0;

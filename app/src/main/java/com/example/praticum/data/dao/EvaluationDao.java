@@ -29,8 +29,14 @@ public interface EvaluationDao {
     @Query("SELECT * FROM evaluation WHERE id = :id LIMIT 1")
     Evaluation getById(long id);
 
-    @Query("SELECT * FROM evaluation WHERE session_id = :sessionId LIMIT 1")
+    @Query("SELECT * FROM evaluation WHERE session_id = :sessionId ORDER BY id DESC LIMIT 1")
     Evaluation getBySessionId(long sessionId);
+
+    @Query("SELECT * FROM evaluation WHERE session_id = :sessionId ORDER BY id DESC LIMIT 1")
+    Evaluation getLatestBySessionId(long sessionId);
+
+    @Query("SELECT * FROM evaluation WHERE session_id = :sessionId AND is_finalized = 1 ORDER BY id DESC")
+    List<Evaluation> getFinalizedBySessionId(long sessionId);
 
     @Query("SELECT COUNT(*) FROM evaluation WHERE session_id = :sessionId")
     int countBySessionId(long sessionId);
@@ -38,4 +44,13 @@ public interface EvaluationDao {
     // Le mode de notation retenu est uniquement « Note commune ».
     @Query("UPDATE evaluation SET scoring_mode = 'Note commune' WHERE id = :evaluationId")
     int setCommonScoringMode(long evaluationId);
+
+    @Query("UPDATE evaluation SET is_finalized = 1, finalized_at = :finalizedAt WHERE id = :evaluationId")
+    int finalizeEvaluation(long evaluationId, long finalizedAt);
+
+    @Query("DELETE FROM evaluation WHERE id = :evaluationId AND session_id = :sessionId")
+    int deleteByIdAndSession(long evaluationId, long sessionId);
+
+    @Query("SELECT COUNT(*) FROM evaluation WHERE id = :evaluationId AND is_finalized = 1")
+    int isFinalized(long evaluationId);
 }

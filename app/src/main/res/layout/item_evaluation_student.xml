@@ -39,6 +39,18 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tvEvaluationStudentNameArabic"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:gravity="end"
+                    android:text="اسم الطالب"
+                    android:textColor="@color/text_secondary"
+                    android:textDirection="rtl"
+                    android:textSize="14sp"
+                    android:visibility="gone" />
+
+                <TextView
                     android:id="@+id/tvEvaluationStudentMatricule"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"

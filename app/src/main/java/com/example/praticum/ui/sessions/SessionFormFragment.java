@@ -21,6 +21,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.FormExitConfirmation;
 import com.example.praticum.data.entity.Course;
 import com.example.praticum.data.entity.Session;
 import com.example.praticum.data.entity.SessionCriterion;
@@ -252,7 +253,10 @@ public class SessionFormFragment extends Fragment {
 
         if (cancelButton != null) {
             cancelButton.setOnClickListener(
-                    v -> getParentFragmentManager().popBackStack()
+                    v -> FormExitConfirmation.show(
+                            this,
+                            () -> getParentFragmentManager().popBackStack()
+                    )
             );
         }
     }

@@ -18,6 +18,7 @@ import androidx.lifecycle.ViewModelProvider;
 
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.FormExitConfirmation;
 import com.example.praticum.data.entity.AcademicYear;
 import com.google.android.material.button.MaterialButton;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -614,7 +615,7 @@ public class AcademicYearFormFragment extends Fragment {
 
     private void configurerBoutons() {
 
-        btnCancel.setOnClickListener(v -> revenirEnArriere());
+        btnCancel.setOnClickListener(v -> FormExitConfirmation.show(this, this::revenirEnArriere));
 
         btnSave.setOnClickListener(v -> enregistrer());
     }

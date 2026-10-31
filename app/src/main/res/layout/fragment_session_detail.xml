@@ -71,14 +71,7 @@
                         android:textSize="21sp"
                         android:textStyle="bold" />
 
-                    <TextView
-                        android:id="@+id/tvSessionDetailTargetGroups"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="Groupes concernés : —"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="14sp" />
+
 
                     <!-- Type d'activité -->
                     <LinearLayout
@@ -200,6 +193,15 @@
 
                     </com.google.android.material.card.MaterialCardView>
 
+                    <TextView
+                        android:id="@+id/tvSessionDetailCriteriaList"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:text="Aucun critère d’évaluation configuré."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="3dp" />
                     <!-- Séparateur -->
                     <View
                         android:layout_width="match_parent"
@@ -349,7 +351,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Suivez les présences des étudiants."
+                        android:text="Enregistrez les présences, absences et retards associés à cette séance."
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp" />
 
@@ -448,7 +450,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="Les étudiants seront évalués selon les critères configurés pour cette activité."
+                        android:text="Le barème ci-dessus présente les critères et les points prévus pour cette séance."
                         android:textColor="@color/text_secondary"
                         android:textSize="14sp" />
 

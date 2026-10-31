@@ -9,7 +9,7 @@
             <ImageView android:layout_width="20dp" android:layout_height="20dp" android:contentDescription="Ouvrir le détail" android:src="@drawable/ic_chevron_right" app:tint="@color/text_secondary"/>
         </LinearLayout>
         <View android:layout_width="match_parent" android:layout_height="1dp" android:layout_marginTop="16dp" android:layout_marginBottom="14dp" android:background="@color/color_divider"/>
-        <TextView android:id="@+id/tvGroupSubject" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Matière : Informatique" android:textColor="@color/text_primary" android:textSize="13sp"/>
+        <TextView android:id="@+id/tvGroupSubject" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Spécialité : Informatique" android:textColor="@color/text_primary" android:textSize="13sp"/>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:orientation="horizontal">
             <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Effectif" android:textColor="@color/text_secondary" android:textSize="12sp"/>

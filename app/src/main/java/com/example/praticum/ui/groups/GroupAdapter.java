@@ -72,14 +72,14 @@ public class GroupAdapter
             @NonNull GroupViewHolder holder, int position) {
         StudentGroup group = groups.get(position);
 
-        String matiere = valeur(group.getSubject()).trim();
+        String specialite = valeur(group.getSubject()).trim();
         int nbEtudiants = compter(effectifs, group.getId());
         int nbSeances = compter(seances, group.getId());
 
         holder.name.setText(valeur(group.getName()));
         holder.code.setText("Code : " + valeur(group.getCode()));
         holder.subject.setText(
-                "Matière : " + (matiere.isEmpty() ? "—" : matiere)
+                "Spécialité : " + (specialite.isEmpty() ? "—" : specialite)
         );
         holder.students.setText(
                 nbEtudiants + (nbEtudiants > 1

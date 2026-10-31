@@ -17,6 +17,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.praticum.MainActivity;
 import com.example.praticum.R;
 import com.example.praticum.core.common.CommonHeaderHelper;
+import com.example.praticum.core.common.DeletionConfirmationDialog;
 import com.example.praticum.data.entity.AcademicYear;
 import com.google.android.material.chip.ChipGroup;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -291,16 +292,12 @@ public class AcademicYearsFragment extends Fragment {
             return;
         }
 
-        new MaterialAlertDialogBuilder(requireContext())
-                .setTitle("Supprimer l'année")
-                .setMessage(
-                        "Supprimer l'année universitaire "
-                                + year.getLabel() + " ?"
-                )
-                .setNegativeButton("Annuler", null)
-                .setPositiveButton("Supprimer", (dialog, which) ->
-                        viewModel.deleteAcademicYear(year.getId()))
-                .show();
+        DeletionConfirmationDialog.show(
+                requireContext(),
+                "Supprimer l'année universitaire ?",
+                "L'année universitaire " + year.getLabel() + " sera supprimée.",
+                () -> viewModel.deleteAcademicYear(year.getId())
+        );
     }
 
     @Override

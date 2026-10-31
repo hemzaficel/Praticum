@@ -39,6 +39,15 @@ public interface EvaluationTeamMemberDao {
     @Query("SELECT COUNT(*) FROM evaluation_team_member WHERE evaluation_id = :evaluationId AND student_id = :studentId")
     int countStudentInEvaluation(long evaluationId, String studentId);
 
+    @Query("SELECT COUNT(*) FROM evaluation_team_member etm INNER JOIN evaluation e ON e.id = etm.evaluation_id WHERE e.session_id = :sessionId AND e.is_finalized = 1 AND e.id != :excludedEvaluationId AND etm.student_id = :studentId")
+    int countStudentFinalizedInSessionExceptEvaluation(long sessionId, long excludedEvaluationId, String studentId);
+
+    @Query("SELECT DISTINCT etm.student_id FROM evaluation_team_member etm INNER JOIN evaluation e ON e.id = etm.evaluation_id WHERE e.session_id = :sessionId AND e.is_finalized = 1")
+    List<String> getFinalizedStudentIdsBySession(long sessionId);
+
+    @Query("SELECT DISTINCT etm.student_id FROM evaluation_team_member etm INNER JOIN evaluation ev ON ev.id = etm.evaluation_id INNER JOIN enrollment en ON en.student_id = etm.student_id INNER JOIN academic_year ay ON ay.id = en.academic_year_id WHERE ev.session_id = :sessionId AND ev.is_finalized = 1 AND en.level_id = :levelId AND en.specialization_id = :specializationId AND ay.is_active = 1")
+    List<String> getFinalizedStudentIdsBySessionLevelAndSpecializationInActiveYear(long sessionId, int levelId, int specializationId);
+
     @Query("DELETE FROM evaluation_team_member WHERE team_id = :teamId AND student_id = :studentId")
     int removeStudentFromTeam(long teamId, String studentId);
 

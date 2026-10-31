@@ -1,14 +1,11 @@
 package com.example.praticum.ui.evaluation;
 
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -24,11 +21,10 @@ import com.example.praticum.R;
 import com.example.praticum.data.entity.EvaluationScore;
 import com.example.praticum.data.entity.SessionCriterion;
 import com.example.praticum.data.entity.Student;
+import com.example.praticum.ui.enrollments.EnrollmentsFragment;
 
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.Set;
 
 public class EvaluationSheetFragment extends Fragment {
 
@@ -43,6 +39,7 @@ public class EvaluationSheetFragment extends Fragment {
 
     private int currentTeamIndex = -1;
     private long currentTeamId = -1;
+    private long currentEvaluationId = -1;
 
     private TextView sessionView;
     private TextView maxScoreView;
@@ -52,12 +49,10 @@ public class EvaluationSheetFragment extends Fragment {
     private TextView teamNameView;
     private TextView totalStatusView;
     private TextView totalView;
-    private TextView positionView;
-
     private ProgressBar progressBar;
 
-    private AutoCompleteTextView groupSearch;
-    private EditText orderSearch;
+    private AutoCompleteTextView studentSelectionInput;
+    private String selectedStudentId;
 
     private RecyclerView studentsRecycler;
     private RecyclerView criteriaRecycler;
@@ -65,7 +60,6 @@ public class EvaluationSheetFragment extends Fragment {
     private EvaluationTeamAdapter teamAdapter;
     private EvaluationCriterionAdapter criterionAdapter;
 
-    private ArrayAdapter<String> groupAdapter;
 
     public EvaluationSheetFragment() {
         // Constructeur public requis par Android.
@@ -104,6 +98,8 @@ public class EvaluationSheetFragment extends Fragment {
         sessionTitle = args == null
                 ? ""
                 : args.getString("session_title", "");
+        long requestedEvaluationId = args == null
+                ? -1 : args.getLong("evaluation_id", -1);
 
         if (sessionId <= 0) {
             showMessage("Séance invalide.");
@@ -114,12 +110,29 @@ public class EvaluationSheetFragment extends Fragment {
         bindViews(view);
         configurerRetour(view);
         configurerListes();
-        configurerRechercheGroupe();
+        configurerSelectionEtudiant(view);
         configurerAjoutEtNavigation(view);
         configurerEnregistrement(view);
         observerDonnees();
 
-        viewModel.loadSheet(sessionId);
+        long restoredEvaluationId = savedInstanceState != null
+                ? savedInstanceState.getLong("evaluation_id", requestedEvaluationId)
+                : requestedEvaluationId;
+        if (restoredEvaluationId > 0) {
+            currentEvaluationId = restoredEvaluationId;
+            viewModel.loadSheet(sessionId, restoredEvaluationId);
+        } else {
+            EvaluationViewModel.SheetState retainedState =
+                    viewModel.getSheetState().getValue();
+            if (retainedState != null
+                    && retainedState.getSession().getId() == sessionId
+                    && retainedState.getEvaluationId() > 0) {
+                currentEvaluationId = retainedState.getEvaluationId();
+                viewModel.loadSheet(sessionId, currentEvaluationId);
+            } else {
+                viewModel.startNewEvaluation(sessionId);
+            }
+        }
     }
 
     private void bindViews(View view) {
@@ -159,16 +172,8 @@ public class EvaluationSheetFragment extends Fragment {
                 R.id.tvEvaluationTotal
         );
 
-        positionView = view.findViewById(
-                R.id.tvEvaluationPosition
-        );
-
-        groupSearch = view.findViewById(
-                R.id.autoCompleteSearchGroup
-        );
-
-        orderSearch = view.findViewById(
-                R.id.etSearchOrder
+        studentSelectionInput = view.findViewById(
+                R.id.actEvaluationSelectedStudent
         );
 
         studentsRecycler = view.findViewById(
@@ -229,14 +234,10 @@ public class EvaluationSheetFragment extends Fragment {
                     }
 
                     if (resultat.shouldClearInputs()) {
-                        if (groupSearch != null) {
-                            groupSearch.setText("", false);
-                            groupSearch.setError(null);
-                        }
-
-                        if (orderSearch != null) {
-                            orderSearch.setText("");
-                            orderSearch.setError(null);
+                        selectedStudentId = null;
+                        if (studentSelectionInput != null) {
+                            studentSelectionInput.setText("", false);
+                            studentSelectionInput.setError(null);
                         }
                     }
 
@@ -255,6 +256,7 @@ public class EvaluationSheetFragment extends Fragment {
             EvaluationViewModel.SheetState nouvelEtat) {
 
         state = nouvelEtat;
+        currentEvaluationId = state.getEvaluationId();
 
         if (sessionView != null) {
             String title = state.getSession().getTitle();
@@ -265,8 +267,6 @@ public class EvaluationSheetFragment extends Fragment {
                             : title
             );
         }
-
-        configurerGroupes();
 
         List<EvaluationViewModel.EvaluationTeamState> teams =
                 state.getTeams();
@@ -314,21 +314,6 @@ public class EvaluationSheetFragment extends Fragment {
         return -1;
     }
 
-    private void configurerGroupes() {
-        if (groupSearch == null || state == null) {
-            return;
-        }
-
-        groupAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line,
-                state.getGroupNames()
-        );
-
-        groupSearch.setAdapter(groupAdapter);
-        groupSearch.setThreshold(1);
-    }
-
     private void configurerRetour(View view) {
         View backButton = view.findViewById(
                 R.id.btnEvaluationBack
@@ -355,18 +340,47 @@ public class EvaluationSheetFragment extends Fragment {
         }
     }
 
-    private void configurerRechercheGroupe() {
-        if (groupSearch == null) {
-            return;
+    private void configurerSelectionEtudiant(View view) {
+        View chooseStudentButton = view.findViewById(
+                R.id.btnChooseEvaluationStudent
+        );
+        if (chooseStudentButton != null) {
+            chooseStudentButton.setOnClickListener(v -> {
+                if (state == null || state.getModuleLevelId() <= 0) {
+                    showMessage("Le niveau du module n'est pas disponible.");
+                    return;
+                }
+                requireActivity()
+                            .getSupportFragmentManager()
+                            .beginTransaction()
+                            .replace(
+                                    R.id.mainContainer,
+                                    EnrollmentsFragment.newInstanceForSelection(
+                                            state.getModuleLevelId(),
+                                            state.getModuleSpecializationId())
+                            )
+                            .addToBackStack("evaluation_choose_enrollment")
+                            .commit();
+            });
         }
 
-        groupAdapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_dropdown_item_1line
+        getParentFragmentManager().setFragmentResultListener(
+                EnrollmentsFragment.RESULT_KEY,
+                getViewLifecycleOwner(),
+                (key, result) -> {
+                    selectedStudentId = result.getString(
+                            EnrollmentsFragment.RESULT_STUDENT_ID
+                    );
+                    String label = result.getString(
+                            EnrollmentsFragment.RESULT_STUDENT_LABEL,
+                            ""
+                    );
+                    if (studentSelectionInput != null) {
+                        studentSelectionInput.setText(label, false);
+                        studentSelectionInput.setError(null);
+                    }
+                }
         );
-
-        groupSearch.setAdapter(groupAdapter);
-        groupSearch.setThreshold(1);
     }
 
     private void afficherFicheVide() {
@@ -378,10 +392,6 @@ public class EvaluationSheetFragment extends Fragment {
 
         if (memberCountView != null) {
             memberCountView.setText("0 étudiant");
-        }
-
-        if (positionView != null) {
-            positionView.setText("Aucune équipe");
         }
 
         if (studentsRecycler != null) {
@@ -429,13 +439,6 @@ public class EvaluationSheetFragment extends Fragment {
             );
         }
 
-        if (positionView != null) {
-            positionView.setText(
-                    (currentTeamIndex + 1)
-                            + " / "
-                            + teams.size()
-            );
-        }
 
         teamAdapter = new EvaluationTeamAdapter(
                 currentTeam.getStudents(),
@@ -464,38 +467,12 @@ public class EvaluationSheetFragment extends Fragment {
                 R.id.btnAddStudentToTeam
         );
 
-        View previousButton = view.findViewById(
-                R.id.btnPreviousEvaluation
-        );
 
-        View nextButton = view.findViewById(
-                R.id.btnNextEvaluation
-        );
 
         if (addButton != null) {
             addButton.setOnClickListener(v -> ajouterEtudiant());
         }
 
-        if (previousButton != null) {
-            previousButton.setOnClickListener(v -> {
-                if (state != null && currentTeamIndex > 0) {
-                    currentTeamIndex--;
-                    afficherEquipeCourante();
-                }
-            });
-        }
-
-        if (nextButton != null) {
-            nextButton.setOnClickListener(v -> {
-                if (state != null
-                        && currentTeamIndex
-                        < state.getTeams().size() - 1) {
-
-                    currentTeamIndex++;
-                    afficherEquipeCourante();
-                }
-            });
-        }
     }
 
     private void ajouterEtudiant() {
@@ -504,32 +481,8 @@ public class EvaluationSheetFragment extends Fragment {
             return;
         }
 
-        String groupName = groupSearch.getText()
-                .toString()
-                .trim();
-
-        String orderText = orderSearch.getText()
-                .toString()
-                .trim();
-
-        if (TextUtils.isEmpty(groupName)) {
-            groupSearch.setError("Choisissez un groupe");
-            return;
-        }
-
-        if (TextUtils.isEmpty(orderText)) {
-            orderSearch.setError(
-                    "Saisissez l'ordre de l'étudiant"
-            );
-            return;
-        }
-
-        int order;
-
-        try {
-            order = Integer.parseInt(orderText);
-        } catch (NumberFormatException e) {
-            orderSearch.setError("Ordre invalide");
+        if (selectedStudentId == null || selectedStudentId.trim().isEmpty()) {
+            showMessage("Choisissez un étudiant à ajouter à l’équipe.");
             return;
         }
 
@@ -539,9 +492,9 @@ public class EvaluationSheetFragment extends Fragment {
 
         viewModel.addStudent(
                 sessionId,
+                currentEvaluationId,
                 teamId,
-                groupName,
-                order
+                selectedStudentId
         );
     }
 
@@ -556,6 +509,7 @@ public class EvaluationSheetFragment extends Fragment {
 
         viewModel.removeStudent(
                 sessionId,
+                currentEvaluationId,
                 currentTeam.getTeam().getId(),
                 student.getStudentId()
         );
@@ -642,26 +596,8 @@ public class EvaluationSheetFragment extends Fragment {
             return;
         }
 
-        Set<String> evaluatedStudentIds = new HashSet<>();
-
-        for (EvaluationViewModel.EvaluationTeamState team
-                : state.getTeams()) {
-
-            if (!team.isEvaluated()) {
-                continue;
-            }
-
-            for (EvaluationViewModel.StudentWithGroup entry
-                    : team.getStudents()) {
-
-                evaluatedStudentIds.add(
-                        entry.getStudent().getStudentId()
-                );
-            }
-        }
-
         int totalStudents = state.getTotalStudents();
-        int evaluatedCount = evaluatedStudentIds.size();
+        int evaluatedCount = state.getEvaluatedStudentIds().size();
 
         int remainingCount = Math.max(
                 0,
@@ -712,6 +648,7 @@ public class EvaluationSheetFragment extends Fragment {
 
             viewModel.saveEvaluation(
                     sessionId,
+                    currentEvaluationId,
                     teamId,
                     scores
             );
@@ -733,6 +670,14 @@ public class EvaluationSheetFragment extends Fragment {
     }
 
     @Override
+    public void onSaveInstanceState(@NonNull Bundle outState) {
+        if (currentEvaluationId > 0) {
+            outState.putLong("evaluation_id", currentEvaluationId);
+        }
+        super.onSaveInstanceState(outState);
+    }
+
+    @Override
     public void onDestroyView() {
         sessionView = null;
         maxScoreView = null;
@@ -742,19 +687,16 @@ public class EvaluationSheetFragment extends Fragment {
         teamNameView = null;
         totalStatusView = null;
         totalView = null;
-        positionView = null;
 
         progressBar = null;
 
-        groupSearch = null;
-        orderSearch = null;
+        studentSelectionInput = null;
 
         studentsRecycler = null;
         criteriaRecycler = null;
 
         teamAdapter = null;
         criterionAdapter = null;
-        groupAdapter = null;
 
         super.onDestroyView();
     }

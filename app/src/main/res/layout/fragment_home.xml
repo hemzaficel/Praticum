@@ -285,7 +285,7 @@
                             android:layout_width="34dp"
                             android:layout_height="34dp"
                             android:background="@drawable/bg_profile_circle"
-                            android:contentDescription="Séances"
+                            android:contentDescription="Inscriptions"
                             android:padding="8dp"
                             android:src="@drawable/ic_calendar"
                             app:tint="@color/primary" />
@@ -304,7 +304,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Séances prévues"
+                            android:text="Inscriptions (année en cours)"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 
@@ -333,7 +333,7 @@
                             android:layout_width="34dp"
                             android:layout_height="34dp"
                             android:background="@drawable/bg_profile_circle"
-                            android:contentDescription="Présences à compléter"
+                            android:contentDescription="Évaluations effectuées"
                             android:padding="8dp"
                             android:src="@drawable/ic_check_circle"
                             app:tint="@color/primary" />
@@ -352,7 +352,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_marginTop="2dp"
-                            android:text="Présences à saisir"
+                            android:text="Évaluations effectuées"
                             android:textColor="@color/text_secondary"
                             android:textSize="12sp" />
 
@@ -362,6 +362,50 @@
 
             </LinearLayout>
 
+            <!-- Données de configuration de test -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="18dp"
+                app:cardBackgroundColor="@color/white"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="0dp"
+                app:strokeColor="@color/color_outline"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Configuration de test"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Ajoute les années, formations, niveaux, modules, groupes et trois étudiants fictifs pour tester le parcours d’inscription."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btnSeedTestConfiguration"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        android:text="Insérer les données de test"
+                        android:textAllCaps="false"
+                        app:cornerRadius="12dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
             <!-- Configuration indispensable -->
             <TextView
                 android:layout_width="match_parent"
@@ -929,5 +973,6 @@
     </ScrollView>
 
 </LinearLayout>
+
 
 

@@ -8,12 +8,18 @@ import androidx.room.Index;
 import androidx.room.PrimaryKey;
 
 @Entity(
-        tableName = "module",
+        tableName = "Course",
         foreignKeys = {
                 @ForeignKey(
                         entity = Level.class,
                         parentColumns = "id",
                         childColumns = "level_id",
+                        onDelete = ForeignKey.RESTRICT
+                ),
+                @ForeignKey(
+                        entity = Specialization.class,
+                        parentColumns = "id",
+                        childColumns = "specialization_id",
                         onDelete = ForeignKey.RESTRICT
                 )
         },
@@ -22,7 +28,8 @@ import androidx.room.PrimaryKey;
                         value = {"code", "level_id"},
                         unique = true
                 ),
-                @Index(value = {"level_id"})
+                @Index(value = {"level_id"}),
+                @Index(value = {"specialization_id"})
         }
 )
 
@@ -41,6 +48,9 @@ public class Course {
     @ColumnInfo(name = "level_id")
     private int levelId;
 
+    @ColumnInfo(name = "specialization_id")
+    private int specializationId;
+
     @ColumnInfo(name = "semester")
     private int semester;
 
@@ -54,6 +64,7 @@ public class Course {
             String code,
             String name,
             int levelId,
+            int specializationId,
             int semester,
             double coefficient,
             String description
@@ -61,6 +72,7 @@ public class Course {
         this.code = code;
         this.name = name;
         this.levelId = levelId;
+        this.specializationId = specializationId;
         this.semester = semester;
         this.coefficient = coefficient;
         this.description = description;
@@ -97,6 +109,10 @@ public class Course {
     public void setLevelId(int levelId) {
         this.levelId = levelId;
     }
+
+    public int getSpecializationId() { return specializationId; }
+
+    public void setSpecializationId(int specializationId) { this.specializationId = specializationId; }
 
     public int getSemester() {
         return semester;

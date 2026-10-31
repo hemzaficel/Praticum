@@ -22,6 +22,7 @@ import androidx.fragment.app.FragmentManager;
 import com.example.praticum.ui.about.AboutFragment;
 import com.example.praticum.ui.academicyears.AcademicYearsFragment;
 import com.example.praticum.ui.groups.GroupsFragment;
+import com.example.praticum.ui.enrollments.EnrollmentsFragment;
 import com.example.praticum.ui.home.HomeFragment;
 import com.example.praticum.ui.levels.LevelsFragment;
 import com.example.praticum.ui.modules.ModulesFragment;
@@ -143,6 +144,9 @@ public class MainActivity extends AppCompatActivity
 
         } else if (menuItemId == R.id.nav_groups) {
             fragment = new GroupsFragment();
+
+        } else if (menuItemId == R.id.nav_enrollments) {
+            fragment = new EnrollmentsFragment();
 
         } else if (menuItemId == R.id.nav_sessions) {
             fragment = new SessionsFragment();
